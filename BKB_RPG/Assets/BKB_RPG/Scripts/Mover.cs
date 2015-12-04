@@ -194,7 +194,7 @@ namespace BKB_RPG {
 				Gizmos.color = Color.blue;
 				if (commands[x].command_type == MovementCommand.CommandTypes.Teleport) {
 					Gizmos.color = Color.yellow;
-					BKB_RPG.DebugHelpers.DrawArrow(lastPos, (Vector3)commands[x].myVector2);
+					Utils.DrawArrow(lastPos, (Vector3)commands[x].myVector2);
 					lastPos = (Vector3)commands[x].myVector2;
 					continue;
 				}
@@ -218,7 +218,7 @@ namespace BKB_RPG {
 				default:
 					continue;
 				}
-				BKB_RPG.DebugHelpers.DrawArrow(lastPos, target);
+				Utils.DrawArrow(lastPos, target);
 				lastPos = target;
 			}
 			
