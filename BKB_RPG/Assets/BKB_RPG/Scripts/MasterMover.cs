@@ -1,14 +1,15 @@
 ﻿using UnityEngine;
 using System.Collections;
+using BKB_RPG;
 
 public class MasterMover : MonoBehaviour {
 
 	public enum dirs {Free, Four, Eight};
 
 	public static MasterMover _instance { get; private set; }
-	[Range(0f, 1000f)]
-	public float unitDistance = 1f;
+
 	public dirs directions = dirs.Free;
+	public float unitDistance = 1f;
 
 	public virtual void Awake () {
 		if (_instance == null) {
@@ -35,5 +36,7 @@ public class MasterMover : MonoBehaviour {
 	void Update () {
 		
 	}
+
+
 
 }

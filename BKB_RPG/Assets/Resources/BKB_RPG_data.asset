@@ -11,7 +11,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 497799a02d210ae42818b944564d4fd1, type: 3}
   m_Name: BKB_RPG_data
   m_EditorClassIdentifier: 
-  id: 
   directions: 0
-  unitLength: 1
-  pixelsToUnit: 32
+  unitLength: 2
+  pixelsPerUnit: 51

@@ -34,13 +34,16 @@ namespace BKB_RPG {
 		bool targetSet = false;
 		Vector3 target;
 		bool stopped = false;
+		Animator anim;
 
 		//move related
 		int depth = 0;
 
+
 		void Start() {
 			Setup();
 		}
+
 
 		// Update is called once per frame
 		void Update () {
@@ -54,7 +57,9 @@ namespace BKB_RPG {
 			startPosition = transform.position;
 			if (radius == 0)
 				radius = GetComponent<CircleCollider2D>().radius;
+			anim = GetComponent<Animator>();
 		}
+
 
 		void NextNode() {
 			currentNode += (move_forward ? 1 : -1);
@@ -97,10 +102,18 @@ namespace BKB_RPG {
 			}
 		}
 
+
+		void SetAnimation(string name, float value) {
+			if (anim == null)
+				return;
+			anim.SetFloat(name, value);
+		}
+
+
 		void Tick() {
 			if (stopped)
 				return;
-
+			SetAnimation("speed", 0);
 			switch(commands[currentNode].command_type) {
 			case (MovementCommand.CommandTypes.Wait):
 				waitTime += Time.deltaTime;
@@ -132,6 +145,16 @@ namespace BKB_RPG {
 				}
 				if (commands[currentNode].myBool)
 					target = (Vector3)commands[currentNode].transformTarget.position;
+
+				Vector2 r = target - transform.position;
+				float angle = Mathf.Atan2(r.y, r.x)*Mathf.Rad2Deg-90f;
+				if (angle < 0)
+					angle += 360;
+				angle -= 360;
+				angle = Mathf.Abs(angle);
+				SetAnimation("facing", angle);
+				SetAnimation("speed", speed*100);
+
 				int result = Move( target );
 				if (result == 1 || (result == 2 && ignore_impossible)) {
 					targetSet = false;
@@ -151,6 +174,7 @@ namespace BKB_RPG {
 				break;
 			}
 		}
+
 
 		// private?
 		public virtual int Move(Vector3 target) {
@@ -185,7 +209,6 @@ namespace BKB_RPG {
 			depth = 0;
 			return (int)results.Nil;
 		}
-
 
 
 		void OnDrawGizmosSelected() {
