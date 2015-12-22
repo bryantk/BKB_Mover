@@ -8,8 +8,9 @@ namespace BKB_RPG {
 	public class Mover : MonoBehaviour {
 		public enum RepeatBehavior{None, PingPong, Loop, ResetAndLoop}; 
 		public enum Speed{Slowest=5, Slower=15, Slow=30, Normal=50, Faster=100, Fastest=200}
-		// movement pathing results
-		public enum results{Nil = 0, Complete = 1, Hit = 2};
+        public enum aSpeed { Frozen = 0, Slowest = 1, Slower = 2, Normal = 3, Faster = 4, Fastest = 5 }
+        // movement pathing results
+        public enum results{Nil = 0, Complete = 1, Hit = 2};
 
 		public List<MovementCommand> commands;
 
@@ -19,6 +20,9 @@ namespace BKB_RPG {
 			get {return (int)move_speed/1000f;}
 		}
 
+        public float facing;
+
+        // Options
 		public float spread = 0.75f;
 		public float stop_range = 2;
 		public float radius = 0;
@@ -28,8 +32,18 @@ namespace BKB_RPG {
 		public int currentNode = 0;
 		public bool ignore_impossible = false;
 
-		// not in inspector
-		public Vector3 startPosition;
+        // TODO
+        public bool alwaysAnimate = false;
+        public bool lockFacing = false;
+        public bool clipEnties = false;
+        public bool clipAll = false;
+        public aSpeed animation_speed = aSpeed.Normal;
+        public float animation_rate {
+            get { return (int)move_speed/5; }
+        }
+
+        // not in inspector
+        public Vector3 startPosition = Vector3.zero;
 		float waitTime = 0;
 		bool targetSet = false;
 		Vector3 target;
@@ -38,6 +52,7 @@ namespace BKB_RPG {
 
 		//move related
 		int depth = 0;
+        float nearestPixel = 0;
 
 
 		void Start() {
@@ -58,7 +73,11 @@ namespace BKB_RPG {
 			if (radius == 0)
 				radius = GetComponent<CircleCollider2D>().radius;
 			anim = GetComponent<Animator>();
-		}
+            // pixelLock may impose a larger step than move speed.
+            PixelLock pixel = GetComponent<PixelLock>();
+            if (pixel != null)
+                nearestPixel = pixel.resolution;
+        }
 
 
 		void NextNode() {
@@ -110,8 +129,43 @@ namespace BKB_RPG {
 		}
 
 
+        void MoveCommands() {
+            if (!targetSet) {
+                switch (commands[currentNode].move_type) {
+                    case MovementCommand.MoverTypes.Absolute:
+                        target = commands[currentNode].myVector2;
+                        break;
+                    case MovementCommand.MoverTypes.Relative:
+                        target = transform.position;
+                        target += (Vector3)commands[currentNode].myVector2;
+                        break;
+                    case MovementCommand.MoverTypes.To_transform:
+                        target = commands[currentNode].transformTarget.position;
+                        break;
+                    case MovementCommand.MoverTypes.obj_name:
+                        target = commands[currentNode].transformTarget.position;
+                        break;
+                }
+                target.z = this.transform.position.z;
+                targetSet = true;
+            }
+            if (commands[currentNode].myBool)
+                target = (Vector3)commands[currentNode].transformTarget.position;
+
+            facing = Utils.AngleBetween(transform.position, target);
+            SetAnimation("facing", facing);
+            SetAnimation("speed", speed * 100);
+
+            int result = Move(target);
+            if (result == 1 || (result == 2 && ignore_impossible)) {
+                targetSet = false;
+                NextNode();
+                return;
+            } // else if (result == 2 && giveup)
+        }
+
 		void Tick() {
-			if (stopped)
+			if (stopped || commands.Count == 0)
 				return;
 			SetAnimation("speed", 0);
 			switch(commands[currentNode].command_type) {
@@ -124,43 +178,7 @@ namespace BKB_RPG {
 				}
 				break;
 			case (MovementCommand.CommandTypes.Move):
-				if (!targetSet) {
-					switch(commands[currentNode].move_type) {
-					case MovementCommand.MoverTypes.Absolute:
-						target = commands[currentNode].myVector2;
-						break;
-					case MovementCommand.MoverTypes.Relative:
-						target = transform.position;
-						target += (Vector3)commands[currentNode].myVector2;
-						break;
-					case MovementCommand.MoverTypes.To_transform:
-						target = commands[currentNode].transformTarget.position;
-						break;
-					case MovementCommand.MoverTypes.obj_name:
-						target = commands[currentNode].transformTarget.position;
-						break;
-					}
-					target.z = this.transform.position.z;
-					targetSet = true;
-				}
-				if (commands[currentNode].myBool)
-					target = (Vector3)commands[currentNode].transformTarget.position;
-
-				Vector2 r = target - transform.position;
-				float angle = Mathf.Atan2(r.y, r.x)*Mathf.Rad2Deg-90f;
-				if (angle < 0)
-					angle += 360;
-				angle -= 360;
-				angle = Mathf.Abs(angle);
-				SetAnimation("facing", angle);
-				SetAnimation("speed", speed*100);
-
-				int result = Move( target );
-				if (result == 1 || (result == 2 && ignore_impossible)) {
-					targetSet = false;
-					NextNode();
-					return;
-				} // else if (result == 2 && giveup)
+                MoveCommands();
 				break;
 			case (MovementCommand.CommandTypes.GoTo):
 				currentNode = commands[currentNode].myInt;
@@ -175,13 +193,12 @@ namespace BKB_RPG {
 			}
 		}
 
-
 		// private?
 		public virtual int Move(Vector3 target) {
 			depth++;
 			Vector2 dir = target - transform.position;
 			// within destination?
-			if (dir.magnitude <= speed) {
+			if (dir.magnitude <= Mathf.Max(speed, nearestPixel)) {
 				transform.position = target;
 				depth = 0;
 				return (int)results.Complete;
@@ -190,11 +207,11 @@ namespace BKB_RPG {
 			RaycastHit2D hit = Utils.Raycast(transform.position, dir.normalized, ray_density,
 			                                 radius*spread, radius+speed*stop_range, this.transform);
 			if (hit) {
-				// DEBUG only
-				if (EditorApplication.isPlaying) {
-					if (hit.transform == this.transform)
-						Debug.LogWarning(this.name + " colliding with self.");
+                // DEBUG only
+                if (EditorApplication.isPlaying && hit.transform == this.transform) {
+					Debug.LogWarning(this.name + " colliding with self.");
 				}
+
 				if (slide && depth < 2) {
 					Vector3 t = Vector3.Cross(dir.normalized, hit.normal);
 					t = Vector3.Cross(hit.normal, t);
@@ -210,42 +227,6 @@ namespace BKB_RPG {
 			return (int)results.Nil;
 		}
 
-
-		void OnDrawGizmosSelected() {
-			Vector3 lastPos = startPosition;
-			for (int x = 0; x < commands.Count; x++) {
-				Gizmos.color = Color.blue;
-				if (commands[x].command_type == MovementCommand.CommandTypes.Teleport) {
-					Gizmos.color = Color.yellow;
-					Utils.DrawArrow(lastPos, (Vector3)commands[x].myVector2);
-					lastPos = (Vector3)commands[x].myVector2;
-					continue;
-				}
-				if (commands[x].command_type != MovementCommand.CommandTypes.Move)
-					continue;
-				Vector3 target = lastPos;
-				switch (commands[x].move_type) {
-				case MovementCommand.MoverTypes.Relative:
-					target += (Vector3)commands[x].myVector2;
-					break;
-				case MovementCommand.MoverTypes.Absolute:
-					Gizmos.color = Color.red;
-					target = (Vector3)commands[x].myVector2;
-					break;
-				case MovementCommand.MoverTypes.To_transform:
-				case MovementCommand.MoverTypes.obj_name:
-					Gizmos.color = Color.green;
-					if (commands[x].transformTarget != null)
-						target = commands[x].transformTarget.position;
-					break;
-				default:
-					continue;
-				}
-				Utils.DrawArrow(lastPos, target);
-				lastPos = target;
-			}
-			
-		}
 
 	}
 }

@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using System.Collections;
+
 
 namespace BKB_RPG {
 	public static class Utils {
@@ -36,6 +36,15 @@ namespace BKB_RPG {
 			return hit;
 		}
 
+
+        public static float AngleBetween(Vector3 position, Vector3 target) {
+            Vector2 r = target - position;
+            float angle = Mathf.Atan2(r.y, r.x) * Mathf.Rad2Deg - 90f;
+            if (angle < 0)
+                angle += 360;
+            return Mathf.Abs(angle-360) % 360;
+        }
+
 		public static void DrawArrow(Vector3 start, Vector3 end) {
 			Gizmos.DrawLine(start, end);
 			Vector3 dir = end-start;
@@ -46,5 +55,21 @@ namespace BKB_RPG {
 			Gizmos.DrawLine(end, end+t-dir);
 		}
 
-	}
+        public static void DrawHandlesArrow(Vector3 start, Vector3 end, Color? color=null) {
+            Color old = UnityEditor.Handles.color;
+            if (color != null)
+                UnityEditor.Handles.color = (Color)color;
+            UnityEditor.Handles.DrawLine(start, end);
+            Vector3 dir = end - start;
+            dir = dir.normalized;
+            Vector3 t = Vector3.Cross(Vector3.forward, dir) * 0.15f;
+            dir = dir * 0.25f;
+            UnityEditor.Handles.DrawLine(end, end - t - dir);
+            UnityEditor.Handles.DrawLine(end, end + t - dir);
+            if (color != null) {
+                UnityEditor.Handles.color = old;
+            }
+        }
+
+    }
 }

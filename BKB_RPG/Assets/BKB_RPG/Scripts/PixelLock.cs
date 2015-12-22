@@ -6,7 +6,7 @@ namespace BKB_RPG {
 	public class PixelLock : MonoBehaviour {
 
 		public int pixelsPerUnit = 16;
-		float resolution;
+        public float resolution;
 		Vector3 carry;
 
 		void Awake() {

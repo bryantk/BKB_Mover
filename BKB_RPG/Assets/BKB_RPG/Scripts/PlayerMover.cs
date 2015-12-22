@@ -9,12 +9,12 @@ public class PlayerMover : MonoBehaviour {
 		 */
 	public float speed = 1;
 
-	private BKB_RPG.Movement myMovement;
+	private BKB_RPG.Mover myMovement;
 
 	// Use this for initialization
 	void Start () {
-		myMovement = GetComponent<BKB_RPG.Movement>();
-		myMovement.Setup(speed, 0.5f, true, 0.75f, 1, 2);
+		myMovement = GetComponent<BKB_RPG.Mover>();
+        //myMovement.Setup(speed, 0.5f, true, 0.5f, 2, 2);
 	}
 	
 	// Update is called once per frame
