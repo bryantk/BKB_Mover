@@ -7,6 +7,7 @@ public class MovementCommand_Wait : MovementCommand {
 
     public MovementCommand_Wait() : base() {
         command_type = CommandTypes.Wait;
+        time = 1;
     }
 
 }

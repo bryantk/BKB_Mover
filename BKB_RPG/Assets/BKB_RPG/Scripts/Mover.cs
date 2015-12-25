@@ -98,7 +98,9 @@ namespace BKB_RPG {
 
 
 		void NextNode() {
-			currentNode += (move_forward ? 1 : -1);
+            waitTime = 0;
+            targetSet = false;
+            currentNode += (move_forward ? 1 : -1);
 			if (currentNode >= commands.Count) {
 				switch (repeat) {
 				case RepeatBehavior.PingPong:
@@ -147,26 +149,28 @@ namespace BKB_RPG {
 
 
         void MoveCommands() {
-            if (!targetSet) {
-                switch (commands[currentNode].move_type) {
-                    case MovementCommand.MoverTypes.Absolute:
-                        target = commands[currentNode].myVector2;
+            MovementCommand_Move command = (MovementCommand_Move)commands[currentNode];
+            if (!targetSet)
+            {
+                switch (command.move_type) {
+                    case MovementCommand_Move.MoverTypes.Absolute:
+                        target = command.target;
                         break;
-                    case MovementCommand.MoverTypes.Relative:
+                    case MovementCommand_Move.MoverTypes.Relative:
                         target = transform.position;
-                        target += (Vector3)commands[currentNode].myVector2;
+                        target += (Vector3)command.target;
                         break;
-                    case MovementCommand.MoverTypes.To_transform:
-                        target = commands[currentNode].transformTarget.position;
+                    case MovementCommand_Move.MoverTypes.To_transform:
+                        target = command.transformTarget.position;
                         break;
-                    case MovementCommand.MoverTypes.obj_name:
-                        target = commands[currentNode].transformTarget.position;
+                    case MovementCommand_Move.MoverTypes.obj_name:
+                        target = command.transformTarget.position;
                         break;
                 }
-                target.z = this.transform.position.z;
+                target.z = transform.position.z;
                 targetSet = true;
             }
-            if (commands[currentNode].myBool)
+            else if (command.recalculate)
                 target = (Vector3)commands[currentNode].transformTarget.position;
 
             facing = Utils.AngleBetween(transform.position, target);
@@ -175,9 +179,7 @@ namespace BKB_RPG {
 
             int result = Move(target);
             if (result == 1 || (result == 2 && ignore_impossible)) {
-                targetSet = false;
                 NextNode();
-                return;
             } // else if (result == 2 && giveup)
         }
 
@@ -185,33 +187,36 @@ namespace BKB_RPG {
 			if (stopped || commands.Count == 0)
 				return;
 			SetAnimation("speed", 0);
-			switch(commands[currentNode].command_type) {
-			case MovementCommand.CommandTypes.Wait:
-				waitTime += Time.deltaTime;
-				if (waitTime >= commands[currentNode].myFloat1) {
-					waitTime = 0;
-					NextNode();
-					return;
-				}
-				break;
-			case MovementCommand.CommandTypes.Move:
+            var command_type = commands[currentNode].GetType();
+
+            if (command_type == typeof(MovementCommand_Wait) )
+            {
+                waitTime += Time.deltaTime;
+                if (waitTime >= ((MovementCommand_Wait)commands[currentNode]).time)
+                    NextNode();
+            }
+            else if (command_type == typeof(MovementCommand_Move) )
+            {
                 MoveCommands();
-				break;
-			case MovementCommand.CommandTypes.GoTo:
-				currentNode = commands[currentNode].myInt;
-				break;
-			case MovementCommand.CommandTypes.Teleport:
-				transform.position = (Vector3)commands[currentNode].myVector2;
-				NextNode();
-				break;
-            case MovementCommand.CommandTypes.Script:
-                commands[currentNode].myScriptCalls.Invoke();
+            }
+            else if (command_type == typeof(MovementCommand_GOTO))
+            {
+                currentNode = ((MovementCommand_GOTO)commands[currentNode]).gotoId;
+            }
+            else if (command_type == typeof(MovementCommand_Script))
+            {
+                ((MovementCommand_Script)commands[currentNode]).scriptCalls.Invoke();
                 NextNode();
-                break;
-			default:
-				Debug.LogWarning("Unknown command type: " + commands[currentNode].command_type.ToString());
-				break;
-			}
+            }
+            else
+            {
+                Debug.LogWarning("Unknown command type: " + command_type.ToString());
+            }
+
+			//case MovementCommand.CommandTypes.Teleport:
+			//	transform.position = (Vector3)commands[currentNode].myVector2;
+			//	NextNode();
+			//	break;
 		}
 
 		// private?

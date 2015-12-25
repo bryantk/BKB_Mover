@@ -9,7 +9,9 @@ namespace BKB_RPG {
 		public enum MoverTypes {Relative, Absolute, To_transform, obj_name};
 
 		public CommandTypes command_type;
-		public MoverTypes move_type;
+        public bool expandedInspector;
+
+        public MoverTypes move_type;
 		public Transform transformTarget;
 		public Vector2 myVector2;
 		public string myString;
@@ -20,7 +22,7 @@ namespace BKB_RPG {
         //public object[] objects;
         public UnityEngine.Events.UnityEvent myScriptCalls;
 
-        public bool expandedInspector;
+        
 
         public MovementCommand(CommandTypes commandtype=CommandTypes.Wait) {
 			Init(commandtype);
