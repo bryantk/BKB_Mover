@@ -10,21 +10,19 @@ public class Drawer_Mover : Editor
 {
     //important
     Mover myScript;
-    MasterMover master;
-
-    // Scroll position of Command window
-    Vector2 scrollPos;
-	bool guts = false;
-	bool quick_commands = false;
-	List<bool> viewPathEntries = new List<bool>();
+    MasterMover masterMover;
 
     // settings
-    float button_width = 80;
+    GUIStyle style;
+    float buttonWidth = 80;
 
 
     void OnEnable() {
 		myScript = target as Mover;
-		int master_count = FindObjectsOfType<MasterMover>().Length;
+        style = new GUIStyle();
+        style.normal.textColor = Color.white;
+        style.fontSize = 8;
+        int master_count = FindObjectsOfType<MasterMover>().Length;
 		if (master_count == 0) {
 			Debug.LogWarning("No MoverMasters found... Creating");
 			GameObject obj = new GameObject();
@@ -33,21 +31,19 @@ public class Drawer_Mover : Editor
 		}
 		if (master_count > 1)
 			Debug.LogWarning(master_count.ToString() + " MoverMasters found, should be 1.");
-		master = FindObjectOfType<MasterMover>();
-		viewPathEntries = new List<bool>();
-		if (myScript.commands == null)
-			myScript.commands = new List<MovementCommand>();
-		for (int i = 0; i < myScript.commands.Count; i++) {
-			viewPathEntries.Add(false);
-		}
-        if (myScript.startPosition == Vector3.zero)
-            myScript.startPosition = myScript.transform.position;
+		masterMover = FindObjectOfType<MasterMover>();
+		if (myScript.commands == null) {
+            myScript.commands = new List<MovementCommand>();
+        }
+        
     }
 
 	// manage handlers and arrow display of path
 	void OnSceneGUI() {
-		// TODO
-		Vector3 lastPos = myScript.startPosition;
+        // redraw path in editor
+        if (!Application.isPlaying)
+            myScript.startPosition = myScript.transform.position;
+        Vector3 lastPos = myScript.startPosition;
         Handles.Label(lastPos - Vector3.right * 0.25f, "Start");
         for (int i = 0; i < myScript.commands.Count; i++) {
             MovementCommand command = myScript.commands[i];
@@ -77,8 +73,10 @@ public class Drawer_Mover : Editor
                     Utils.DrawHandlesArrow(lastPos, target, Color.green);
                     break;
 				}
-                
                 lastPos = target;
+
+                Handles.Label(lastPos + Vector3.right * 0.15f + Vector3.down * 0.1f, i.ToString(), style);
+
                 break;
 			case MovementCommand.CommandTypes.Teleport:
 				command.myVector2 = Handles.FreeMoveHandle(command.myVector2, Quaternion.identity, 0.75f, Vector3.one, Handles.ArrowCap);
@@ -95,47 +93,35 @@ public class Drawer_Mover : Editor
 	public override void OnInspectorGUI() {
 		// Follow this template
 		serializedObject.Update();
-		SerializedProperty prop = serializedObject.FindProperty("m_Script");
-		EditorGUILayout.PropertyField(prop, true, new GUILayoutOption[0]);
-		serializedObject.ApplyModifiedProperties();
-
         DrawHeaderInfo();
-        DrawCommands();
-        
+        DrawCommands();    
         DrawQuickCommands();
-		SceneView.RepaintAll();
-	}
+        serializedObject.ApplyModifiedProperties();
+        SceneView.RepaintAll();
+    }
 
 
     void DrawHeaderInfo() {
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("m_Script"), true, new GUILayoutOption[0]);
         GUILayout.Label("Status", EditorStyles.boldLabel);
-        GUILayout.BeginHorizontal();
-        GUILayout.Label("Move Speed:", GUILayout.MaxWidth(80));
-        GUILayout.Label("", GUILayout.MaxWidth(0.0f));
-        myScript.move_speed = (Mover.Speed)EditorGUILayout.EnumPopup(myScript.move_speed, GUILayout.Width(70));
-        GUILayout.Label("Repeat:", GUILayout.MaxWidth(50.0f));
-        myScript.Repeat = (Mover.RepeatBehavior)EditorGUILayout.EnumPopup(myScript.Repeat, GUILayout.Width(100));
-        GUILayout.EndHorizontal();
-
-        GUILayout.BeginHorizontal();
-        GUILayout.Label("Forward:", GUILayout.MaxWidth(80));
-        float y = GUILayoutUtility.GetLastRect().y;
-        myScript.move_forward = GUILayout.Toggle(myScript.move_forward, "");
-        GUI.Label(new Rect(176, y, 70, 15), "Current:");
-        GUI.Label(new Rect(275, y, 70, 15), myScript.currentNode.ToString());
-        GUILayout.EndHorizontal();
-
-        myScript.ignore_impossible = EditorGUILayout.Toggle("Ignore Impossible:", myScript.ignore_impossible);
-        myScript.facing = EditorGUILayout.FloatField("Facing:", myScript.facing);
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("move_speed"), new GUIContent("Move Speed"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("repeat"), new GUIContent("Repeat"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("move_forward"), new GUIContent("Advance Forward"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("ignore_impossible"), new GUIContent("Ignore Impossible"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("facing"), new GUIContent("Facing Angle"));
 
         EditorGUI.indentLevel = 1;
-        guts = EditorGUILayout.Foldout(guts, "Options");
-        if (guts) {
-            myScript.spread = EditorGUILayout.Slider("Spread %:", myScript.spread, 0.5f, 3);
-            myScript.stop_range = EditorGUILayout.Slider("Stop Distance:", myScript.stop_range, 0, 4);
-            myScript.radius = EditorGUILayout.Slider("Radius:", myScript.radius, 0, 10);
-            myScript.ray_density = EditorGUILayout.IntSlider("Ray Count: ", myScript.ray_density, 1, 5);
-            myScript.slide = EditorGUILayout.Toggle("Slide:", myScript.slide);
+        myScript.showOptions = EditorGUILayout.Foldout(myScript.showOptions, "Options");
+        if (myScript.showOptions) {
+            serializedObject.FindProperty("spread").floatValue =
+                EditorGUILayout.Slider("Spread %:", serializedObject.FindProperty("spread").floatValue, 0.5f, 3);
+            serializedObject.FindProperty("stop_range").floatValue =
+                EditorGUILayout.Slider("Stop At", serializedObject.FindProperty("stop_range").floatValue, 0, 4);
+            serializedObject.FindProperty("radius").floatValue =
+                EditorGUILayout.Slider("Radius", serializedObject.FindProperty("radius").floatValue, 0, 10);
+            serializedObject.FindProperty("ray_density").intValue =
+                EditorGUILayout.IntSlider("Ray Count", serializedObject.FindProperty("ray_density").intValue, 1, 5);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("slide"), new GUIContent("Slide?"));
         }
     }
 
@@ -145,17 +131,18 @@ public class Drawer_Mover : Editor
         GUILayout.Box("", new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.Height(1) });
         GUILayout.Label("Commands", EditorStyles.boldLabel);
         float y = GUILayoutUtility.GetLastRect().y;
+        GUI.Label(new Rect(176, y, 70, 15), "Current: " + myScript.currentNode.ToString());
         GUI.Box(new Rect(105, y, 15, 15), "");
         GUI.Label(new Rect(107, y, 18, 18), "?");
         myContextMenu(new Rect(105, y, 25, 25), 0, myScript.commands.Count, true);
         // -------------------------------------------------------------------------------------------------------------
-        scrollPos = EditorGUILayout.BeginScrollView(scrollPos, false, true, GUILayout.Height(200));
+        myScript.scrollPos = EditorGUILayout.BeginScrollView(myScript.scrollPos, false, true, GUILayout.Height(200));
         EditorGUI.indentLevel = 1;
         // List each command
         for (int i = 0; i < myScript.commands.Count; i++) {
             MovementCommand command = myScript.commands[i];
             EditorGUILayout.BeginHorizontal(GUILayout.Width(50));
-            viewPathEntries[i] = EditorGUILayout.Foldout(viewPathEntries[i], i.ToString() + ":");
+            command.expandedInspector = EditorGUILayout.Foldout(command.expandedInspector, i.ToString() + ":");
             Rect rt = GUILayoutUtility.GetLastRect();
             GUI.Box(new Rect(43, rt.y, 15, 15), "");
             GUI.Label(new Rect(45, rt.y, 18, 18), "?");
@@ -165,7 +152,7 @@ public class Drawer_Mover : Editor
             // if user changed command type, show options
             if (commandType != command.command_type) {
                 command.command_type = commandType;
-                viewPathEntries[i] = true;
+                command.expandedInspector = true;
             }
             // Show quick info of command
             string stats = "";
@@ -205,6 +192,15 @@ public class Drawer_Mover : Editor
             case MovementCommand.CommandTypes.GoTo:
                 stats = "GoTo command " + command.myInt.ToString();
                 break;
+            case MovementCommand.CommandTypes.Script:
+                SerializedProperty scripts = serializedObject.FindProperty("commands").GetArrayElementAtIndex(i).FindPropertyRelative("myScriptCalls");
+                // Advance to ArraySize
+                scripts.Next(true);
+                scripts.Next(true);
+                scripts.Next(true);
+                scripts.Next(true);
+                stats = scripts.intValue.ToString() + " calls";
+                break;
             default:
                 stats = command.command_type.ToString() + " not implemented";
                 break;
@@ -212,7 +208,7 @@ public class Drawer_Mover : Editor
             EditorGUILayout.LabelField(stats, GUILayout.Width(150));
             EditorGUILayout.EndHorizontal();
             // Draw layout for each type
-            if (viewPathEntries[i]) {
+            if (command.expandedInspector) {
                 //------------------------------------------------------------------------------------------------------
                 // C O M M A N D   E D I T I N G
                 //------------------------------------------------------------------------------------------------------
@@ -256,6 +252,10 @@ public class Drawer_Mover : Editor
                 case MovementCommand.CommandTypes.Teleport:
                     command.myVector2 = EditorGUILayout.Vector2Field("Destination", command.myVector2);
                     break;
+                case MovementCommand.CommandTypes.Script:
+                    SerializedProperty scripts = serializedObject.FindProperty("commands").GetArrayElementAtIndex(i).FindPropertyRelative("myScriptCalls");
+                    EditorGUILayout.PropertyField(scripts, new GUIContent("calls"), GUILayout.Width(275));
+                    break;
                 default:
                     EditorGUILayout.LabelField("ERROR");
                     break;
@@ -277,30 +277,30 @@ public class Drawer_Mover : Editor
 
 
     void DrawQuickCommands() {
-        quick_commands = EditorGUILayout.Foldout(quick_commands, "Quick Commands");
-        if (quick_commands) {
+        myScript.showQuickCommands = EditorGUILayout.Foldout(myScript.showQuickCommands, "Quick Commands");
+        if (myScript.showQuickCommands) {
             int index = -1;
             
-            int buttons_per_row = (int)(Screen.width / (button_width + 7));
+            int buttons_per_row = (int)(Screen.width / (buttonWidth + 7));
             EditorGUILayout.BeginHorizontal();
             _DrawRow(ref index, buttons_per_row);
-            if (GUILayout.Button("Move Up", GUILayout.Width(button_width))) {
+            if (GUILayout.Button("Move Up", GUILayout.Width(buttonWidth))) {
                 QuickCommand(new int[2] { myScript.commands.Count, 1 });
             }
             _DrawRow(ref index, buttons_per_row);
-            if (GUILayout.Button("Move Right", GUILayout.Width(button_width))) {
+            if (GUILayout.Button("Move Right", GUILayout.Width(buttonWidth))) {
                 QuickCommand(new int[2] { myScript.commands.Count, 2 });
             }
             _DrawRow(ref index, buttons_per_row);
-            if (GUILayout.Button("Move Down", GUILayout.Width(button_width))) {
+            if (GUILayout.Button("Move Down", GUILayout.Width(buttonWidth))) {
                 QuickCommand(new int[2] { myScript.commands.Count, 3 });
             }
             _DrawRow(ref index, buttons_per_row);
-            if (GUILayout.Button("Move Left", GUILayout.Width(button_width))) {
+            if (GUILayout.Button("Move Left", GUILayout.Width(buttonWidth))) {
                 QuickCommand(new int[2] { myScript.commands.Count, 4 });
             }
             _DrawRow(ref index, buttons_per_row);
-            if (GUILayout.Button(Screen.width.ToString(), GUILayout.Width(button_width))) {
+            if (GUILayout.Button(Screen.width.ToString(), GUILayout.Width(buttonWidth))) {
 
             }
             EditorGUILayout.EndHorizontal();
@@ -354,8 +354,8 @@ public class Drawer_Mover : Editor
     //menu helpers
 	void VisiblityControlls(object show) {
 		bool visable = System.Convert.ToBoolean(show);
-		for (int i = 0; i < viewPathEntries.Count; i++) {
-			viewPathEntries[i] = visable;
+		for (int i = 0; i < myScript.commands.Count; i++) {
+            myScript.commands[i].expandedInspector = visable;
 		}
 	}
 
@@ -366,7 +366,6 @@ public class Drawer_Mover : Editor
 	void RemoveAt(object data) {
 		int id = System.Convert.ToInt32(data);
 		myScript.commands.RemoveAt(id);
-		viewPathEntries.RemoveAt(id);
 	}
 
 	void Move(object data) {
@@ -383,13 +382,12 @@ public class Drawer_Mover : Editor
 		RemoveAt(id);
 		id = id - (up ? 1 : -1);
 		myScript.commands.Insert(id, command);
-		viewPathEntries.Insert(id, false);
-	}
+        command.expandedInspector = false;
+    }
 
 	void InsertCommand(object data) {
 		int id = System.Convert.ToInt32(data);
 		myScript.commands.Insert(id, new MovementCommand(MovementCommand.CommandTypes.Move));
-		viewPathEntries.Insert(id, true);
 	}
 
 	void QuickCommand(object data) {
@@ -397,25 +395,24 @@ public class Drawer_Mover : Editor
 		int index = args[0];
 		if (index == myScript.commands.Count) {
 			myScript.commands.Insert(index, new MovementCommand(MovementCommand.CommandTypes.Move));
-			viewPathEntries.Insert(index, false);
 		}
 		MovementCommand command = new MovementCommand(MovementCommand.CommandTypes.Move);
 		switch(args[1]) {
 		case 1:	// move up
 			command.move_type = MovementCommand.MoverTypes.Relative;
-			command.myVector2 = Vector2.up * master.unitDistance;
+			command.myVector2 = Vector2.up * masterMover.unitDistance;
 			break;
 		case 2:	// move right
 			command.move_type = MovementCommand.MoverTypes.Relative;
-			command.myVector2 = Vector2.right * master.unitDistance;
+			command.myVector2 = Vector2.right * masterMover.unitDistance;
 			break;
 		case 3:	// move right
 			command.move_type = MovementCommand.MoverTypes.Relative;
-			command.myVector2 = Vector2.down * master.unitDistance;
+			command.myVector2 = Vector2.down * masterMover.unitDistance;
 			break;
 		case 4:	// move right
 			command.move_type = MovementCommand.MoverTypes.Relative;
-			command.myVector2 = Vector2.left * master.unitDistance;
+			command.myVector2 = Vector2.left * masterMover.unitDistance;
 			break;
 		}
 		myScript.commands[index] = command;
