@@ -49,7 +49,6 @@ public class Drawer_Mover : Editor
             // --- Command Switch -----------------------------------------------
 
             var command_type = myScript.commands[i].GetType();
-
             if (command_type == typeof(MovementCommand_Wait))
             {
                 MovementCommand command = ((MovementCommand_Wait)myScript.commands[i]);
@@ -58,8 +57,7 @@ public class Drawer_Mover : Editor
             }
             else if (command_type == typeof(MovementCommand_Move))
             {
-                MovementCommand command = ((MovementCommand_Move)myScript.commands[i]);
-                Debug.Log("mover");
+                MovementCommand_Move command = ((MovementCommand_Move)myScript.commands[i]);
                 //TO DO
                 /*
                 command.myVector2 = Handles.FreeMoveHandle(command.myVector2, Quaternion.identity, 0.75f, Vector3.one, Handles.ArrowCap);
@@ -70,28 +68,29 @@ public class Drawer_Mover : Editor
                 Vector3 target = lastPos;
                 switch (command.move_type)
                 {
-                case MovementCommand.MoverTypes.Relative:
-                    target += (Vector3)command.myVector2;
+                case MovementCommand_Move.MoverTypes.Relative:
+                    target += (Vector3)command.target;
                     Utils.DrawHandlesArrow(lastPos, target, Color.blue);
                     Vector3 temp = target;
-                    temp = Handles.FreeMoveHandle(temp, Quaternion.identity, 0.75f, Vector3.one, Handles.ArrowCap);
-                    command.myVector2 = temp - lastPos;
+                    temp = Handles.FreeMoveHandle(temp, Quaternion.identity, 0.125f, Vector3.one, Handles.SphereCap);
+                    command.target = temp - lastPos;
                     break;
-                case MovementCommand.MoverTypes.Absolute:
-                    target = (Vector3)command.myVector2;
+                case MovementCommand_Move.MoverTypes.Absolute:
+                    target = (Vector3)command.target;
                     Utils.DrawHandlesArrow(lastPos, target, Color.red);
                     // Draw Handle
-                    command.myVector2 = Handles.FreeMoveHandle(command.myVector2, Quaternion.identity, 0.75f, Vector3.one, Handles.ArrowCap);
+                    command.target = Handles.FreeMoveHandle(command.target, Quaternion.identity, 0.125f, Vector3.one, Handles.SphereCap);
                     break;
-                case MovementCommand.MoverTypes.To_transform:
-                case MovementCommand.MoverTypes.obj_name:
+                case MovementCommand_Move.MoverTypes.To_transform:
+                case MovementCommand_Move.MoverTypes.ObjName:
                     if (command.transformTarget != null)
                         target = command.transformTarget.position;
                     Utils.DrawHandlesArrow(lastPos, target, Color.green);
                     break;
                 }
                 lastPos = target;
-
+                Handles.Disc(Quaternion.identity, lastPos, Vector3.forward, command.withinDistance, true, 1);
+                Handles.DrawDottedLine(lastPos, lastPos + new Vector3(command.withinDistance, 0, 0), 2.5f);
                 Handles.Label(lastPos + Vector3.right * 0.15f + Vector3.down * 0.1f, i.ToString(), style);
             }
             else if (command_type == typeof(MovementCommand_GOTO))
@@ -103,8 +102,8 @@ public class Drawer_Mover : Editor
 
             }
 		}
-		
-	}
+
+    }
 
 	public override void OnInspectorGUI() {
 		// Follow this template
@@ -121,12 +120,22 @@ public class Drawer_Mover : Editor
         EditorGUILayout.PropertyField(serializedObject.FindProperty("m_Script"), true, new GUILayoutOption[0]);
         GUILayout.Label("Status", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(serializedObject.FindProperty("move_speed"), new GUIContent("Move Speed"));
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("repeat"), new GUIContent("Repeat"));
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("move_forward"), new GUIContent("Advance Forward"));
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("ignore_impossible"), new GUIContent("Ignore Impossible"));
+        
+
         EditorGUILayout.PropertyField(serializedObject.FindProperty("facing"), new GUIContent("Facing Angle"));
 
         EditorGUI.indentLevel = 1;
+        myScript.showSettings = EditorGUILayout.Foldout(myScript.showSettings, "Settings");
+        if (myScript.showSettings)
+        {
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("repeat"), new GUIContent("Repeat"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("reverse"), new GUIContent("Reverse"));
+
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("lockFacing"), new GUIContent("Lock Facing"));
+
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("ignore_impossible"), new GUIContent("Ignore Impossible"));
+            myScript.Pause = EditorGUILayout.Toggle("Paused", myScript.Pause);
+        }
         myScript.showOptions = EditorGUILayout.Foldout(myScript.showOptions, "Options");
         if (myScript.showOptions) {
             serializedObject.FindProperty("spread").floatValue =
@@ -167,8 +176,8 @@ public class Drawer_Mover : Editor
                 "", command.command_type, GUILayout.Width(75));
             // if user changed command type, show options
             if (commandType != command.command_type) {
-                command.command_type = commandType;
-                command.expandedInspector = true;
+                _SwapCommand(commandType, i);
+                return;
             }
             // Show quick info of command
             string stats = "";
@@ -177,12 +186,12 @@ public class Drawer_Mover : Editor
                 MovementCommand_Move move_command = (MovementCommand_Move)command;
                 switch (move_command.move_type) {
                 case MovementCommand_Move.MoverTypes.To_transform:
-                    if (command.transformTarget != null)
+                    if (move_command.transformTarget != null)
                         stats = "TO: " + move_command.transformTarget.name;
                     else
                         stats = "TO: NULL";
                     break;
-                case MovementCommand_Move.MoverTypes.obj_name:
+                case MovementCommand_Move.MoverTypes.ObjName:
                     stats = "TO: " + move_command.targetName;
                     break;
                 default:
@@ -199,31 +208,32 @@ public class Drawer_Mover : Editor
                         stats = move_command.target.ToString() + " " + move_command.move_type.ToString();
                     break;
                 }
+                if (move_command.withinDistance > 0)
+                    stats = "*" + stats;
                 break;
             case MovementCommand.CommandTypes.Wait:
                 stats = ((MovementCommand_Wait)command).time.ToString() + " seconds";
                 break;
             // TODO
-            case MovementCommand.CommandTypes.Teleport:
-                stats = "Teleport to " + command.myVector2.ToString();
+            //case MovementCommand.CommandTypes.Teleport:
+            //    stats = "Teleport to " + command.myVector2.ToString();
+            //    break;
+            case MovementCommand.CommandTypes.Boolean:
+                MovementCommand_Bool boolCommand = (MovementCommand_Bool)command;
+                stats = string.Format("{0} : {1}", boolCommand.flag, boolCommand.Bool);
                 break;
             case MovementCommand.CommandTypes.GoTo:
                 stats = "GoTo command " + ((MovementCommand_GOTO)command).gotoId.ToString();
                 break;
             case MovementCommand.CommandTypes.Script:
-                SerializedProperty scripts = serializedObject.FindProperty("commands").GetArrayElementAtIndex(i).FindPropertyRelative("myScriptCalls");
-                // Advance to ArraySize
-                scripts.Next(true);
-                scripts.Next(true);
-                scripts.Next(true);
-                scripts.Next(true);
-                stats = scripts.intValue.ToString() + " calls";
+                MovementCommand_Script events = (MovementCommand_Script)command;
+                stats = ((events.events != null) ? events.events.GetPersistentEventCount() : 0).ToString() + " calls";
                 break;
             default:
                 stats = command.command_type.ToString() + " not implemented";
                 break;
             }
-            EditorGUILayout.LabelField(stats, GUILayout.Width(150));
+            EditorGUILayout.LabelField(stats, GUILayout.Width(175));
             EditorGUILayout.EndHorizontal();
             // Draw layout for each type
             if (command.expandedInspector) {
@@ -234,36 +244,49 @@ public class Drawer_Mover : Editor
                 // Move command
                 case MovementCommand.CommandTypes.Move:
                     MovementCommand_Move move_command = (MovementCommand_Move)command;
-                    move_command.move_type = (MovementCommand_Move.MoverTypes)EditorGUILayout.EnumPopup("", move_command.move_type);
+                    move_command.move_type = (MovementCommand_Move.MoverTypes)EditorGUILayout.EnumPopup(
+                        "", move_command.move_type, GUILayout.Width(135));
                     switch (move_command.move_type) {
                     case MovementCommand_Move.MoverTypes.Relative:
                     case MovementCommand_Move.MoverTypes.Absolute:
-                        move_command.target = EditorGUILayout.Vector2Field("Destination:", move_command.target);
+                        move_command.target = EditorGUILayout.Vector2Field("Destination", move_command.target);
                         break;
                     case MovementCommand_Move.MoverTypes.To_transform:
                         move_command.transformTarget = EditorGUILayout.ObjectField("Target",
                                                                               move_command.transformTarget,
                                                                               typeof(Transform), true) as Transform;
-                        move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target: ", move_command.recalculate);
+                        move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", move_command.recalculate);
                         break;
-                    case MovementCommand_Move.MoverTypes.obj_name:
-                        move_command.targetName = EditorGUILayout.TextField("Target Name: ", move_command.targetName);
+                    case MovementCommand_Move.MoverTypes.ObjName:
+                        move_command.targetName = EditorGUILayout.TextField("Target Name", move_command.targetName);
                         if (move_command.targetName != "") {
                             GameObject obj = GameObject.Find(move_command.targetName);
                             if (obj != null)
                                 move_command.transformTarget = obj.transform;
                         }
-                        move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target: ", move_command.recalculate);
+                        move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", move_command.recalculate);
                         break;
                     default:
                         break;
                     }
-
+                    move_command.instant = EditorGUILayout.Toggle("Teleport", move_command.instant);
+                    move_command.withinDistance = Mathf.Max(EditorGUILayout.FloatField("Stop Within", move_command.withinDistance), 0);
+                    
                     break;
                 // Wait Command
                 case MovementCommand.CommandTypes.Wait:
                     MovementCommand_Wait wait_command = (MovementCommand_Wait)command;
                     wait_command.time = EditorGUILayout.FloatField("Seconds:", wait_command.time, GUILayout.Width(185));
+                    break;
+                case MovementCommand.CommandTypes.Boolean:
+                    MovementCommand_Bool boolCommand = (MovementCommand_Bool)command;
+                    GUILayout.BeginHorizontal();
+                    boolCommand.flag = (MovementCommand_Bool.FlagType)EditorGUILayout.EnumPopup("", boolCommand.flag, GUILayout.Width(135));
+                    if (boolCommand.flag == MovementCommand_Bool.FlagType.Pause)
+                        boolCommand.Bool = true;
+                    else
+                        boolCommand.Bool = EditorGUILayout.Toggle("", boolCommand.Bool);
+                    GUILayout.EndHorizontal();
                     break;
                 case MovementCommand.CommandTypes.GoTo:
                     MovementCommand_GOTO goto_command = (MovementCommand_GOTO)command;
@@ -271,12 +294,13 @@ public class Drawer_Mover : Editor
                     goto_command.gotoId = Mathf.Clamp(goto_command.gotoId, 0, myScript.commands.Count - 1);
                     break;
                 //TODO
-                case MovementCommand.CommandTypes.Teleport:
-                    command.myVector2 = EditorGUILayout.Vector2Field("Destination", command.myVector2);
-                    break;
+                //case MovementCommand.CommandTypes.Teleport:
+                //    command.myVector2 = EditorGUILayout.Vector2Field("Destination", command.myVector2);
+                //    break;
                 case MovementCommand.CommandTypes.Script:
-                    SerializedProperty scripts = serializedObject.FindProperty("commands").GetArrayElementAtIndex(i).FindPropertyRelative("myScriptCalls");
-                    EditorGUILayout.PropertyField(scripts, new GUIContent("calls"), GUILayout.Width(275));
+                    MovementCommand_Script scriptCommand = (MovementCommand_Script)command;
+                    SerializedObject o = new SerializedObject(scriptCommand);
+                    EditorGUILayout.PropertyField(o.FindProperty("events"), new GUIContent("calls"), GUILayout.Width(275));
                     break;
                 default:
                     EditorGUILayout.LabelField("ERROR");
@@ -288,6 +312,29 @@ public class Drawer_Mover : Editor
         EditorGUILayout.Space();
     }
 
+    void _SwapCommand(MovementCommand.CommandTypes commandType, int index = -1) {
+        if (index >= 0 && index <= myScript.commands.Count)
+            myScript.commands.RemoveAt(index);
+        switch (commandType)
+        {
+        case MovementCommand.CommandTypes.Move:
+            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Move>());
+            break;
+        case MovementCommand.CommandTypes.Wait:
+            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Wait>());
+            break;
+        case MovementCommand.CommandTypes.Boolean:
+            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Bool>());
+            break;
+        case MovementCommand.CommandTypes.GoTo:
+            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_GOTO>());
+            break;
+        case MovementCommand.CommandTypes.Script:
+            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Script>());
+            break;
+        
+        }
+    }
 
 	void _DrawRow(ref int index, int buttons_per_row) {
         index++;
@@ -409,7 +456,7 @@ public class Drawer_Mover : Editor
 
 	void InsertNewCommand(object data) {
 		int id = System.Convert.ToInt32(data);
-		myScript.commands.Insert(id, new MovementCommand_Move());
+		myScript.commands.Insert(id, ScriptableObject.CreateInstance<MovementCommand_Move>());
 	}
 
     // for move commands so far
@@ -417,7 +464,7 @@ public class Drawer_Mover : Editor
 		int[] args = data as int[];
 		int index = args[0];
 
-        MovementCommand_Move command = new MovementCommand_Move();
+        MovementCommand_Move command = ScriptableObject.CreateInstance<MovementCommand_Move>();
         command.move_type = MovementCommand_Move.MoverTypes.Relative;
         switch (args[1]) {
 		case 1:	// move up

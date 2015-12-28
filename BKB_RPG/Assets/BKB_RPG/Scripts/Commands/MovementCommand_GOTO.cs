@@ -1,13 +1,14 @@
-﻿using UnityEngine;
-using BKB_RPG;
+﻿
+namespace BKB_RPG {
+    [System.Serializable]
+    public class MovementCommand_GOTO : MovementCommand {
 
-public class MovementCommand_GOTO : MovementCommand {
+        public int gotoId;
 
-    public int gotoId;
+        public MovementCommand_GOTO() : base() {
+            command_type = CommandTypes.GoTo;
+            gotoId = 0;
+        }
 
-    public MovementCommand_GOTO() : base() {
-        command_type = CommandTypes.GoTo;
-        gotoId = 0;
     }
-
 }
