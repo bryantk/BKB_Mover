@@ -37,6 +37,12 @@ namespace BKB_RPG {
 		}
 
 
+        public static Vector2 MagnitudeAngleToVector2(float magnitude, float angle) {
+            //force angle 0 = north, 90 = east
+            Quaternion rotation = Quaternion.AngleAxis(450 - angle, Vector3.forward);
+            return rotation * (Vector3.right * magnitude);
+        }
+
         public static float AngleBetween(Vector3 position, Vector3 target) {
             Vector2 r = target - position;
             float angle = Mathf.Atan2(r.y, r.x) * Mathf.Rad2Deg - 90f;
@@ -55,7 +61,7 @@ namespace BKB_RPG {
 			Gizmos.DrawLine(end, end+t-dir);
 		}
 
-        public static void DrawHandlesArrow(Vector3 start, Vector3 end, Color? color=null) {
+        public static void DrawArrow(Vector3 start, Vector3 end, Color? color=null) {
             Color old = UnityEditor.Handles.color;
             if (color != null)
                 UnityEditor.Handles.color = (Color)color;
@@ -67,6 +73,23 @@ namespace BKB_RPG {
             UnityEditor.Handles.DrawLine(end, end - t - dir);
             UnityEditor.Handles.DrawLine(end, end + t - dir);
             if (color != null) {
+                UnityEditor.Handles.color = old;
+            }
+        }
+
+        public static void DrawDottedArrow(Vector3 start, Vector3 end, Color? color = null) {
+            Color old = UnityEditor.Handles.color;
+            if (color != null)
+                UnityEditor.Handles.color = (Color)color;
+            UnityEditor.Handles.DrawDottedLine(start, end, 5);
+            Vector3 dir = end - start;
+            dir = dir.normalized;
+            Vector3 t = Vector3.Cross(Vector3.forward, dir) * 0.15f;
+            dir = dir * 0.25f;
+            UnityEditor.Handles.DrawLine(end, end - t - dir);
+            UnityEditor.Handles.DrawLine(end, end + t - dir);
+            if (color != null)
+            {
                 UnityEditor.Handles.color = old;
             }
         }

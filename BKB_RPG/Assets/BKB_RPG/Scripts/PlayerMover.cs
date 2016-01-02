@@ -20,7 +20,7 @@ public class PlayerMover : MonoBehaviour {
 	// Update is called once per frame
 	void Update () {
 		Vector2 dir = new Vector2(Input.GetAxisRaw("Horizontal") * speed, Input.GetAxisRaw("Vertical") * speed);
-		myMovement.Move((Vector3)dir.normalized + transform.position);
+		myMovement.StepTowards((Vector3)dir.normalized + transform.position);
 		//myRigidbody.velocity = dir;
 
 	}

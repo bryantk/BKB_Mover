@@ -1,8 +1,6 @@
 ﻿using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEditor;
-using UnityEditor.AnimatedValues;
 using BKB_RPG;
 
 [CustomEditor(typeof(Mover))]
@@ -45,39 +43,42 @@ public class Drawer_Mover : Editor
             myScript.startPosition = myScript.transform.position;
         Vector3 lastPos = myScript.startPosition;
         Handles.Label(lastPos - Vector3.right * 0.25f, "Start");
+        Vector3 offsetAmount = Vector3.right * 0.1f + Vector3.down * 0.25f;
+        Vector3 textOffset = offsetAmount;
         for (int i = 0; i < myScript.commands.Count; i++) {
             // --- Command Switch -----------------------------------------------
 
             var command_type = myScript.commands[i].GetType();
             if (command_type == typeof(MovementCommand_Wait))
             {
-                MovementCommand command = ((MovementCommand_Wait)myScript.commands[i]);
-                Handles.Label(lastPos + Vector3.right * 0.15f + Vector3.down * 0.1f, 
-                    ("Wait: " + ((MovementCommand_Wait)command).time.ToString()), style);
+                MovementCommand_Wait command = ((MovementCommand_Wait)myScript.commands[i]);
+                Handles.Label(lastPos + textOffset, i.ToString() + " : Wait: " + command.time.ToString(), style);
+                textOffset += offsetAmount;
             }
             else if (command_type == typeof(MovementCommand_Move))
             {
+                // Reset Text Offset
+                textOffset = Vector3.right * 0.15f + Vector3.down * 0.1f;
                 MovementCommand_Move command = ((MovementCommand_Move)myScript.commands[i]);
-                //TO DO
-                /*
-                command.myVector2 = Handles.FreeMoveHandle(command.myVector2, Quaternion.identity, 0.75f, Vector3.one, Handles.ArrowCap);
-                Utils.DrawHandlesArrow(lastPos, (Vector3)command.myVector2, Color.yellow);
-                lastPos = (Vector3)command.myVector2;
-                */
-                // change color of arrow if teleport
                 Vector3 target = lastPos;
                 switch (command.move_type)
                 {
                 case MovementCommand_Move.MoverTypes.Relative:
                     target += (Vector3)command.target;
-                    Utils.DrawHandlesArrow(lastPos, target, Color.blue);
+                    if (command.instant)
+                        Utils.DrawDottedArrow(lastPos, target, Color.blue);
+                    else
+                        Utils.DrawArrow(lastPos, target, Color.blue);
                     Vector3 temp = target;
                     temp = Handles.FreeMoveHandle(temp, Quaternion.identity, 0.125f, Vector3.one, Handles.SphereCap);
                     command.target = temp - lastPos;
                     break;
                 case MovementCommand_Move.MoverTypes.Absolute:
                     target = (Vector3)command.target;
-                    Utils.DrawHandlesArrow(lastPos, target, Color.red);
+                    if (command.instant)
+                        Utils.DrawDottedArrow(lastPos, target, Color.red);
+                    else
+                        Utils.DrawArrow(lastPos, target, Color.red);
                     // Draw Handle
                     command.target = Handles.FreeMoveHandle(command.target, Quaternion.identity, 0.125f, Vector3.one, Handles.SphereCap);
                     break;
@@ -85,21 +86,69 @@ public class Drawer_Mover : Editor
                 case MovementCommand_Move.MoverTypes.ObjName:
                     if (command.transformTarget != null)
                         target = command.transformTarget.position;
-                    Utils.DrawHandlesArrow(lastPos, target, Color.green);
+                    if (command.instant)
+                        Utils.DrawDottedArrow(lastPos, target, Color.green);
+                    else
+                        Utils.DrawArrow(lastPos, target, Color.green);
+                    break;
+                case MovementCommand_Move.MoverTypes.Angle:
+                    target += (Vector3)Utils.MagnitudeAngleToVector2(command.maxStep, command.angle);
+                    if (command.instant)
+                        Utils.DrawDottedArrow(lastPos, target, Color.cyan);
+                    else
+                        Utils.DrawArrow(lastPos, target, Color.cyan);
+                    // TODO - manage Handlers
                     break;
                 }
                 lastPos = target;
-                Handles.Disc(Quaternion.identity, lastPos, Vector3.forward, command.withinDistance, true, 1);
-                Handles.DrawDottedLine(lastPos, lastPos + new Vector3(command.withinDistance, 0, 0), 2.5f);
-                Handles.Label(lastPos + Vector3.right * 0.15f + Vector3.down * 0.1f, i.ToString(), style);
+                if (myScript.advanceDebugDraw)
+                {
+                    // Within Distance.
+                    Vector3 withinRadius = lastPos + new Vector3(command.withinDistance, 0, 0);
+                    Vector3 withinSlider = Handles.Slider(withinRadius, Vector3.right, 0.75f, Handles.ArrowCap, 1);
+                    command.withinDistance = Mathf.Max((withinSlider - lastPos).x, 0);
+                    if (command.withinDistance > 0)
+                    {
+                        Handles.Disc(Quaternion.identity, lastPos, Vector3.forward, command.withinDistance, true, 1);
+                        Handles.DrawDottedLine(lastPos, withinRadius, 2.5f);
+                    }
+                    // Within Random.
+                    Handles.color = Color.yellow;
+                    Vector3 randomRadiusMax = lastPos + Vector3.up * command.random.y;
+                    Vector3 randomSliderMax = Handles.Slider(randomRadiusMax, Vector3.up, 0.75f, Handles.ArrowCap, 1);
+                    command.random.y = Mathf.Max((randomSliderMax - lastPos).y, 0);
+                    if (command.random.y < command.random.x)
+                        command.random.x = command.random.y;
+                    Handles.color = Color.red;
+                    Vector3 randomRadiusMin = lastPos + Vector3.up * command.random.x;
+                    Vector3 randomSliderMin = Handles.Slider(randomRadiusMin, Vector3.down, 0.5f, Handles.ArrowCap, 1);
+                    command.random.x = Mathf.Max((randomSliderMin - lastPos).y, 0);
+                    if (command.random.x > command.random.y)
+                        command.random.y = command.random.x;
+                    if (command.random.y > 0)
+                    {
+                        Handles.color = Color.red;
+                        Handles.Disc(Quaternion.identity, lastPos, Vector3.forward, command.random.x, true, 1);
+                        Handles.color = Color.yellow;
+                        Handles.Disc(Quaternion.identity, lastPos, Vector3.forward, command.random.y, true, 1);
+                        Handles.DrawDottedLine(randomSliderMin, randomRadiusMax, 2.5f);
+                    }
+                    Handles.color = Color.white;
+                }
+                // Labels.
+                Handles.Label(lastPos + textOffset, i.ToString() + " : Move", style);
+                textOffset += offsetAmount;
             }
             else if (command_type == typeof(MovementCommand_GOTO))
             {
-      
+                MovementCommand_GOTO command = ((MovementCommand_GOTO)myScript.commands[i]);
+                Handles.Label(lastPos + textOffset, i.ToString() + ": GOTO: " + command.gotoId, style);
+                textOffset += offsetAmount;
             }
             else if (command_type == typeof(MovementCommand_Script))
             {
-
+                Handles.Label(lastPos + textOffset, i.ToString() + ": Script", style);
+                textOffset += offsetAmount;
             }
 		}
 
@@ -117,24 +166,32 @@ public class Drawer_Mover : Editor
 
 
     void DrawHeaderInfo() {
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("m_Script"), true, new GUILayoutOption[0]);
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("m_Script"),
+            true, new GUILayoutOption[0]);
         GUILayout.Label("Status", EditorStyles.boldLabel);
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("move_speed"), new GUIContent("Move Speed"));
-        
-
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("facing"), new GUIContent("Facing Angle"));
-
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("move_speed"),
+            new GUIContent("Move Speed", "How quick to move."));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("animation_speed"),
+            new GUIContent("Animation Speed", "Animation speed multiplier."));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("facing"),
+            new GUIContent("Facing Angle", "0 is up/north, 90 is right/east"));
         EditorGUI.indentLevel = 1;
         myScript.showSettings = EditorGUILayout.Foldout(myScript.showSettings, "Settings");
         if (myScript.showSettings)
         {
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("repeat"), new GUIContent("Repeat"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("reverse"), new GUIContent("Reverse"));
-
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("lockFacing"), new GUIContent("Lock Facing"));
-
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("ignore_impossible"), new GUIContent("Ignore Impossible"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("repeat"), new GUIContent("Repeat",
+                "Repeat loops to start. Ping-pong advances to end, then start, then end. ResetAndLoop reverts to start position and then loops."));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("reverse"),
+                new GUIContent("Reverse", "When True, nextNode-- rather than ++"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("lockFacing"),
+                new GUIContent("Lock Facing", "Facing will not change when true."));
+            // TODO
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("eightDir"), new GUIContent("8 Directions"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("ignore_impossible"),
+                new GUIContent("Ignore Impossible", "On impossible move commands, advance to next command."));
             myScript.Pause = EditorGUILayout.Toggle("Paused", myScript.Pause);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("advanceDebugDraw"),
+                new GUIContent("Advacned Debug", "Show advanced options in inspector GUI."));
         }
         myScript.showOptions = EditorGUILayout.Foldout(myScript.showOptions, "Options");
         if (myScript.showOptions) {
@@ -207,9 +264,23 @@ public class Drawer_Mover : Editor
                     else
                         stats = move_command.target.ToString() + " " + move_command.move_type.ToString();
                     break;
+                case MovementCommand_Move.MoverTypes.Angle:
+                    if (move_command.angle == 0)
+                        stats = "Up " + move_command.maxStep;
+                    else if (move_command.angle == 90)
+                        stats = "Right " + move_command.maxStep;
+                    else if (move_command.angle == 180)
+                        stats = "Down " + move_command.maxStep;
+                    else if (move_command.angle == 270)
+                        stats = "Left " + move_command.maxStep;
+                    else
+                        stats =  "Move " + move_command.maxStep + " at " + move_command.angle + " degrees" ;
+                    break;
                 }
                 if (move_command.withinDistance > 0)
                     stats = "*" + stats;
+                if (move_command.instant)
+                    stats = "!" + stats;
                 break;
             case MovementCommand.CommandTypes.Wait:
                 stats = ((MovementCommand_Wait)command).time.ToString() + " seconds";
@@ -251,12 +322,14 @@ public class Drawer_Mover : Editor
                     case MovementCommand_Move.MoverTypes.Absolute:
                         move_command.target = EditorGUILayout.Vector2Field("Destination", move_command.target);
                         break;
+
                     case MovementCommand_Move.MoverTypes.To_transform:
                         move_command.transformTarget = EditorGUILayout.ObjectField("Target",
                                                                               move_command.transformTarget,
                                                                               typeof(Transform), true) as Transform;
                         move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", move_command.recalculate);
                         break;
+
                     case MovementCommand_Move.MoverTypes.ObjName:
                         move_command.targetName = EditorGUILayout.TextField("Target Name", move_command.targetName);
                         if (move_command.targetName != "") {
@@ -266,12 +339,30 @@ public class Drawer_Mover : Editor
                         }
                         move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", move_command.recalculate);
                         break;
+                    case MovementCommand_Move.MoverTypes.Angle:
+                        // TODO - angle property field?
+                        move_command.angle = Mathf.Clamp(EditorGUILayout.FloatField(new GUIContent("Angle", "0 = North, 90 = East"), move_command.angle), 0f, 360f) % 360;
+                        break;
                     default:
                         break;
                     }
-                    move_command.instant = EditorGUILayout.Toggle("Teleport", move_command.instant);
-                    move_command.withinDistance = Mathf.Max(EditorGUILayout.FloatField("Stop Within", move_command.withinDistance), 0);
-                    
+                    // TODO - move all names/tooltips to definitions file?
+                    move_command.facingCommand = EditorGUILayout.Toggle("Facing Command", move_command.facingCommand);
+                    if (move_command.facingCommand)
+                    {
+
+                    }
+                    else
+                    {
+                        move_command.maxStep = Mathf.Max(EditorGUILayout.FloatField(new GUIContent("Distance", "Maximum distance to move. 0 = no limit."), move_command.maxStep), 0);
+                        move_command.withinDistance = Mathf.Max(EditorGUILayout.FloatField("Stop Within", move_command.withinDistance), 0);
+                        // TODO -  debug and clean this up
+                        EditorGUI.indentLevel = 2;
+                        move_command.random.x = Mathf.Max(EditorGUILayout.FloatField("Min", move_command.random.x), 0);
+                        move_command.random.y = Mathf.Max(EditorGUILayout.FloatField("Max", move_command.random.y), 0);
+                        EditorGUI.indentLevel = 1;
+                        move_command.instant = EditorGUILayout.Toggle("Teleport", move_command.instant);
+                    }
                     break;
                 // Wait Command
                 case MovementCommand.CommandTypes.Wait:
@@ -293,10 +384,6 @@ public class Drawer_Mover : Editor
                     goto_command.gotoId = EditorGUILayout.IntField("Command:", goto_command.gotoId, GUILayout.Width(185));
                     goto_command.gotoId = Mathf.Clamp(goto_command.gotoId, 0, myScript.commands.Count - 1);
                     break;
-                //TODO
-                //case MovementCommand.CommandTypes.Teleport:
-                //    command.myVector2 = EditorGUILayout.Vector2Field("Destination", command.myVector2);
-                //    break;
                 case MovementCommand.CommandTypes.Script:
                     MovementCommand_Script scriptCommand = (MovementCommand_Script)command;
                     SerializedObject o = new SerializedObject(scriptCommand);

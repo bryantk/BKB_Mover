@@ -8,20 +8,26 @@ namespace BKB_RPG {
 	public class Mover : MonoBehaviour {
 		public enum RepeatBehavior{None, PingPong, Loop, ResetAndLoop}; 
 		public enum Speed{Slowest=5, Slower=15, Slow=30, Normal=50, Faster=100, Fastest=200}
-        public enum aSpeed { Frozen = 0, Slowest = 1, Slower = 2, Normal = 3, Faster = 4, Fastest = 5 }
+        public enum aSpeed { None = 0, Slowest = 5, Slower = 10, Normal = 20, Faster = 30, Fastest = 40 }
         // movement pathing results
         public enum results{Nil = 0, Complete = 1, Hit = 2};
 
 		public List<MovementCommand> commands;
-
+        // Move speed
 		public RepeatBehavior repeat = RepeatBehavior.None;
 		public Speed move_speed = Speed.Normal;
 		public float speed {
 			get {return (int)move_speed/1000f;}
 		}
+        // Animation speed multiplier
+        public aSpeed animation_speed = aSpeed.Normal;
+        public float animation_rate {
+            get { return (int)animation_speed / 20f; }
+        }
 
         public int currentNode;
         public float facing;
+
 
         #region Movement Options
         // % spread of raycasts. 1 = flush with collider radius.
@@ -44,31 +50,34 @@ namespace BKB_RPG {
 
         // Facing will not be modified unless false.
         public bool lockFacing = false;
+        public bool eightDir = false;
 
 
         // TODO
         public bool steppingAnimation = false;
         public bool clipEnties = false;
         public bool clipAll = false;
-        public aSpeed animation_speed = aSpeed.Normal;
-        public float animation_rate {
-            get { return (int)move_speed/5; }
-        }
+        
 
-        // command helpers
+        // Wait Command helpers
         float waitTime = 0;
+
+        // Movement Command helpers
         bool targetSet = false;
         Vector3 target;
         int depth = 0;
         float nearestPixel = 0;
 
-        // drawer things
+        #region Inspector Drawer Options
         public Vector3 startPosition = Vector3.zero;
         public Vector2 scrollPos;
         public bool showSettings;
         public bool showOptions;
         public bool showQuickCommands = false;
+        public bool advanceDebugDraw = true;
+        #endregion
 
+        // TODO - correct pasue implementation. Use Ipausaable
         bool paused = false;
         public bool Pause {
             get { return paused; }
@@ -76,17 +85,20 @@ namespace BKB_RPG {
                 _Pause(value);
             }
         }
-		Animator anim;
+
+        #region References for speedy lookups
+        Animator anim;
         Renderer render;
+        #endregion
 
-
-		void Start() {
+        // TODO - this will be called be the manager object
+        void Start() {
 			Setup();
 		}
 
-
-		// Update is called once per frame
-		void Update () {
+        // TODO - this will be called be the manager object
+        // Update is called once per frame
+        void Update () {
 			Tick();
 		}
 
@@ -104,12 +116,14 @@ namespace BKB_RPG {
             if (pixel != null)
                 nearestPixel = pixel.resolution;
 
+            SetAnimation("8-dir", eightDir);
+
             currentNode = -1;
             NextNode();
         }
 
-
-		void NextNode() {
+        // TODO - Refacter into less
+        void NextNode() {
             waitTime = 0;
             targetSet = false;
             currentNode += (reverse ? -1 : 1);
@@ -156,7 +170,9 @@ namespace BKB_RPG {
             if (lockFacing)
                 return;
             facing = value;
-            SetAnimation("facing", facing);
+            Vector2 f = Utils.MagnitudeAngleToVector2(1, facing);
+            SetAnimation("x", f.x);
+            SetAnimation("y", f.y);
         }
 
 
@@ -166,6 +182,13 @@ namespace BKB_RPG {
 			anim.SetFloat(name, value);
 		}
 
+        void SetAnimation(string name, bool value) {
+            if (anim == null)
+                return;
+            anim.SetBool(name, value);
+        }
+
+        // TODO - use IPausable... not this
         void _Pause(bool on) {
             if (paused == on)
                 return;
@@ -178,57 +201,84 @@ namespace BKB_RPG {
             if (!targetSet)
             {
                 switch (command.move_type) {
-                    case MovementCommand_Move.MoverTypes.Absolute:
-                        target = command.target;
-                        break;
-                    case MovementCommand_Move.MoverTypes.Relative:
-                        target = transform.position;
-                        target += (Vector3)command.target;
-                        break;
-                    case MovementCommand_Move.MoverTypes.To_transform:
-                        target = command.transformTarget.position;
-                        break;
-                    case MovementCommand_Move.MoverTypes.ObjName:
-                        target = command.transformTarget.position;
-                        break;
+                case MovementCommand_Move.MoverTypes.Absolute:
+                    target = command.target;
+                    break;
+                case MovementCommand_Move.MoverTypes.Relative:
+                    target = command.target;
+                    target += transform.position;
+                    break;
+                case MovementCommand_Move.MoverTypes.To_transform:
+                case MovementCommand_Move.MoverTypes.ObjName:
+                target = command.transformTarget.position;
+                    target = command.transformTarget.position;
+                    break;
+                case MovementCommand_Move.MoverTypes.Angle:
+                    // TODO - Implement random angle
+                    //  offset current
+                    //      lock to 4, 8, free directions
+                    //  random
+                    //      lock to 4, 8, free directions
+                    float magnitude = command.maxStep;
+                    if (command.random.magnitude > 0)
+                        magnitude = Random.Range(command.random.x, command.random.y);
+                    target = Utils.MagnitudeAngleToVector2(magnitude, command.angle);
+                    target += transform.position;
+                    break;
+                }
+                if (command.move_type != MovementCommand_Move.MoverTypes.Angle)
+                {
+                    if (command.random.magnitude > 0)
+                    {
+                        //TODO deal with directions
+                        //TODO deal with random type (random or weighted)
+                        target += (Vector3)Utils.MagnitudeAngleToVector2(Random.Range(command.random.x, command.random.y), Random.Range(0f, 360f));
+                    }
+                    if (command.maxStep > 0)
+                    {
+                        Vector2 dir = (Vector2)target - (Vector2)transform.position;
+                        dir = dir.normalized * command.maxStep;
+                        target = transform.position + (Vector3)dir;
+                    }
                 }
                 target.z = transform.position.z;
                 targetSet = true;
             }
             else if (command.recalculate)
                 target = (Vector3)command.transformTarget.position;
+            SetFacing(Utils.AngleBetween(transform.position, target));
+            // If a 'facingCommand' variant, do not poceed to actual movement code.
+           if (command.facingCommand)
+            {
+                NextNode();
+                return;
+            }
+
             if (command.instant)
             {
                 transform.position = target;
                 NextNode();
                 return;
             }
-
-
-            SetFacing( Utils.AngleBetween(transform.position, target) );
-            SetAnimation("speed", speed * 100);
-
-            int result = Move(target, command.withinDistance);
+            int result = StepTowards(target, command.withinDistance);
             if (result == 1 || (result == 2 && ignore_impossible)) {
                 NextNode();
+                return;
             } // else if (result == 2 && giveup)
+            SetAnimation("speed", animation_rate);
         }
 
         void _BoolCommands() {
             MovementCommand_Bool command = (MovementCommand_Bool)commands[currentNode];
             switch (command.flag)
             {
-            case MovementCommand_Bool.FlagType.AlwaysAnimate:
-
-                break;
-            case MovementCommand_Bool.FlagType.NeverAnimate:
-
-                break;
             case MovementCommand_Bool.FlagType.Clip:
-
-                break;
             case MovementCommand_Bool.FlagType.ClipAll:
-
+                // TODO - 
+                // Disable collider
+                // turn on bool / set value for Move() to ignore collisions
+                // Clip = dont hit entities, but do hit World
+                // ClipAll = clip all
                 break;
             case MovementCommand_Bool.FlagType.IgnoreImpossible:
                 ignore_impossible = command.Bool;
@@ -243,11 +293,13 @@ namespace BKB_RPG {
             case MovementCommand_Bool.FlagType.Reverse:
                 reverse = command.Bool;
                 break;
+            // TODO - call IPauseable... also, this command is destructive... (no way for self to recover)
             case MovementCommand_Bool.FlagType.Pause:
                 Pause = command.Bool;
                 break;
             }
         }
+
 
         void Tick() {
 			if (Pause || commands.Count == 0)
@@ -274,7 +326,8 @@ namespace BKB_RPG {
             else if (command_type == typeof(MovementCommand_GOTO))
             {
                 currentNode = ((MovementCommand_GOTO)commands[currentNode]).gotoId;
-
+                // This command is a NoOp
+                Tick();
             }
             else if (command_type == typeof(MovementCommand_Script))
             {
@@ -287,15 +340,10 @@ namespace BKB_RPG {
             {
                 Debug.LogWarning("Unknown command type: " + command_type.ToString());
             }
-
-            //case MovementCommand.CommandTypes.Teleport:
-            //	transform.position = (Vector3)commands[currentNode].myVector2;
-            //	NextNode();
-            //	break;
         }
 
         // private?
-        public virtual int Move(Vector3 target, float stopWithin = 0f) {
+        public virtual int StepTowards(Vector3 target, float stopWithin = 0f) {
 			depth++;
 			Vector2 dir = target - transform.position;
 			// within destination?
@@ -318,7 +366,7 @@ namespace BKB_RPG {
 					Vector3 t = Vector3.Cross(dir.normalized, hit.normal);
 					t = Vector3.Cross(hit.normal, t);
 					t.z = 0;
-					return Move (transform.position + (Vector3)t.normalized, stopWithin);
+					return StepTowards (transform.position + (Vector3)t.normalized, stopWithin);
 				}
 				depth = 0;
 				return (int)results.Hit;
