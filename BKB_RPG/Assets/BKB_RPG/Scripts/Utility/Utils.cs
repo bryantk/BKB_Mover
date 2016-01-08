@@ -37,21 +37,31 @@ namespace BKB_RPG {
 		}
 
 
-        public static Vector2 MagnitudeAngleToVector2(float magnitude, float angle) {
+        public static Vector2 AngleMagnitudeToVector2(float angle, float magnitude) {
             //force angle 0 = north, 90 = east
             Quaternion rotation = Quaternion.AngleAxis(450 - angle, Vector3.forward);
             return rotation * (Vector3.right * magnitude);
         }
 
-        public static float AngleBetween(Vector3 position, Vector3 target) {
-            Vector2 r = target - position;
-            float angle = Mathf.Atan2(r.y, r.x) * Mathf.Rad2Deg - 90f;
+        
+
+        public static float Vector2Angle(Vector2 v) {
+            if (v == Vector2.zero)
+                return 0;
+            float angle = Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg - 90f;
             if (angle < 0)
                 angle += 360;
-            return Mathf.Abs(angle-360) % 360;
+            return Mathf.Abs(angle - 360) % 360;
         }
 
-		public static void DrawArrow(Vector3 start, Vector3 end) {
+        public static float AngleBetween(Vector3 position, Vector3 target) {
+            Vector2 r = target - position;
+            return Vector2Angle(r);
+        }
+
+        // Debug / Handles things
+
+        public static void DrawArrow(Vector3 start, Vector3 end) {
 			Gizmos.DrawLine(start, end);
 			Vector3 dir = end-start;
 			dir = dir.normalized;

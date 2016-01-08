@@ -4,10 +4,12 @@ namespace BKB_RPG {
     public class MovementCommand_Move : MovementCommand {
 
         public enum MoverTypes { Relative, Angle, Absolute, To_transform, ObjName };
+        public enum RandomTypes { None=0, Linear=1, Area=2 };
+
         // Determines what logic to apply.
         public MoverTypes move_type;
         // Angle for movment. Use MaxStep for magnitude
-        public float angle;
+        public float offsetAngle;
         // Transform to move towards.
         public Transform transformTarget;
         // Find object with name and set transform as target
@@ -18,6 +20,8 @@ namespace BKB_RPG {
         public float maxStep;
         // Stop when within 'X' units of target.
         public float withinDistance;
+        //
+        public RandomTypes randomType;
         // Choose random point from 'x' to 'y' of target as new target
         public Vector2 random;
         // Teleport to target
@@ -31,7 +35,9 @@ namespace BKB_RPG {
         public MovementCommand_Move() : base() {
             command_type = CommandTypes.Move;
             move_type = MoverTypes.Relative;
-            angle = 0;
+            randomType = RandomTypes.None;
+            random = Vector2.zero;
+            offsetAngle = 0;
             maxStep = 0;
             withinDistance = 0;
             instant = false;

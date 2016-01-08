@@ -115,10 +115,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1d1087e528e5e64d93e0b8c765e0712, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  inner: 4.8
-  outer: 9.800003
+  inner: 3.2
+  outer: 14
   start: 0
-  end: 360.02
+  end: 64.7
 --- !u!23 &570021435
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -263,12 +263,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 521e46da0e673de43baf8ec8b97e7496, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  d: {fileID: 2137293165}
-  events:
-    m_PersistentCalls:
-      m_Calls: []
-    m_TypeName: UnityEngine.Events.UnityEvent, UnityEngine, Version=0.0.0.0, Culture=neutral,
-      PublicKeyToken=null
+  myEvents: []
 --- !u!1 &1871871322
 GameObject:
   m_ObjectHideFlags: 0
@@ -355,20 +350,3 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
---- !u!114 &2137293165
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::datas
-  events:
-    m_PersistentCalls:
-      m_Calls: []
-    m_TypeName: UnityEngine.Events.UnityEvent, UnityEngine, Version=0.0.0.0, Culture=neutral,
-      PublicKeyToken=null
-  cow: moo

@@ -9,6 +9,7 @@ namespace BKB_RPG {
 		public enum RepeatBehavior{None, PingPong, Loop, ResetAndLoop}; 
 		public enum Speed{Slowest=5, Slower=15, Slow=30, Normal=50, Faster=100, Fastest=200}
         public enum aSpeed { None = 0, Slowest = 5, Slower = 10, Normal = 20, Faster = 30, Fastest = 40 }
+        public enum movementDirections { four=4, eight=8, free=360}
         // movement pathing results
         public enum results{Nil = 0, Complete = 1, Hit = 2};
 
@@ -25,6 +26,7 @@ namespace BKB_RPG {
             get { return (int)animation_speed / 20f; }
         }
 
+        public movementDirections directions = movementDirections.four;
         public int currentNode;
         public float facing;
 
@@ -50,7 +52,6 @@ namespace BKB_RPG {
 
         // Facing will not be modified unless false.
         public bool lockFacing = false;
-        public bool eightDir = false;
 
 
         // TODO
@@ -93,17 +94,17 @@ namespace BKB_RPG {
 
         // TODO - this will be called be the manager object
         void Start() {
-			Setup();
+
 		}
 
         // TODO - this will be called be the manager object
         // Update is called once per frame
         void Update () {
-			Tick();
+
 		}
 
 
-		void Setup() {
+		public void Setup() {
 			if (reverse && repeat == RepeatBehavior.None)
 				Pause = true;
 			startPosition = transform.position;
@@ -116,7 +117,7 @@ namespace BKB_RPG {
             if (pixel != null)
                 nearestPixel = pixel.resolution;
 
-            SetAnimation("8-dir", eightDir);
+            SetAnimation("8-dir", ((int)directions >= 8));
 
             currentNode = -1;
             NextNode();
@@ -170,7 +171,7 @@ namespace BKB_RPG {
             if (lockFacing)
                 return;
             facing = value;
-            Vector2 f = Utils.MagnitudeAngleToVector2(1, facing);
+            Vector2 f = Utils.AngleMagnitudeToVector2(facing, 1);
             SetAnimation("x", f.x);
             SetAnimation("y", f.y);
         }
@@ -196,67 +197,101 @@ namespace BKB_RPG {
             print("set paused: " + on);
         }
 
+        Vector3 _GetTarget(MovementCommand_Move command) {
+            Vector3 result = command.target;
+            switch (command.move_type)
+            {
+            case MovementCommand_Move.MoverTypes.Absolute:
+                //result = command.target;
+                break;
+            case MovementCommand_Move.MoverTypes.Relative:
+                result = command.target;
+                result += transform.position;
+                break;
+            case MovementCommand_Move.MoverTypes.To_transform:
+            case MovementCommand_Move.MoverTypes.ObjName:
+                if (command.transformTarget == null)
+                    throw new System.Exception(string.Format("Command {0} target not set on object '{1}'", currentNode, name));
+                result = command.transformTarget.position;
+                result = command.transformTarget.position;
+                break;
+            case MovementCommand_Move.MoverTypes.Angle:
+                // TODO - Implement random angle
+                //  offset current
+                //      lock to 4, 8, free directions
+                //  random
+                //      lock to 4, 8, free directions
+                float magnitude = command.maxStep;
+                if (command.random.magnitude > 0)
+                    magnitude = Random.Range(command.random.x, command.random.y);
+                result = Utils.AngleMagnitudeToVector2(facing + command.offsetAngle, magnitude);
+                result += transform.position;
+                break;
+            }
+            if (command.random.magnitude > 0)
+            {
+                if (command.randomType == MovementCommand_Move.RandomTypes.Linear)
+                {
+                    Vector3 dir = result - transform.position;
+                    dir.z = transform.position.z;
+                    result = result + dir.normalized * Random.Range(command.random.x, command.random.y);
+                }
+                else if (command.randomType == MovementCommand_Move.RandomTypes.Area)
+                {
+                    //TODO deal with directions
+                    float angle = 0;
+                    switch (directions)
+                    {
+                    case movementDirections.four:
+                        angle = 90 * Random.Range(0, 4);
+                        break;
+                    case movementDirections.eight:
+                        angle = 45 * Random.Range(0, 8);
+                        break;
+                    case movementDirections.free:
+                        angle = Random.Range(0, 359);
+                        break;
+                    }
+                    //TODO deal with random type (random or weighted)
+                    result += (Vector3)Utils.AngleMagnitudeToVector2(angle, Random.Range(command.random.x, command.random.y));
+                }
+            }
+            if (command.maxStep > 0 && command.move_type != MovementCommand_Move.MoverTypes.Angle)
+            {
+                Vector2 dir = (Vector2)result - (Vector2)transform.position;
+                dir = dir.normalized * command.maxStep;
+                result = transform.position + (Vector3)dir;
+            }
+            result.z = transform.position.z;
+            return result;
+            
+        }
+
         void _MoveCommands() {
+            SetAnimation("speed", 0);
             MovementCommand_Move command = (MovementCommand_Move)commands[currentNode];
             if (!targetSet)
             {
-                switch (command.move_type) {
-                case MovementCommand_Move.MoverTypes.Absolute:
-                    target = command.target;
-                    break;
-                case MovementCommand_Move.MoverTypes.Relative:
-                    target = command.target;
-                    target += transform.position;
-                    break;
-                case MovementCommand_Move.MoverTypes.To_transform:
-                case MovementCommand_Move.MoverTypes.ObjName:
-                target = command.transformTarget.position;
-                    target = command.transformTarget.position;
-                    break;
-                case MovementCommand_Move.MoverTypes.Angle:
-                    // TODO - Implement random angle
-                    //  offset current
-                    //      lock to 4, 8, free directions
-                    //  random
-                    //      lock to 4, 8, free directions
-                    float magnitude = command.maxStep;
-                    if (command.random.magnitude > 0)
-                        magnitude = Random.Range(command.random.x, command.random.y);
-                    target = Utils.MagnitudeAngleToVector2(magnitude, command.angle);
-                    target += transform.position;
-                    break;
-                }
-                if (command.move_type != MovementCommand_Move.MoverTypes.Angle)
+                try
                 {
-                    if (command.random.magnitude > 0)
-                    {
-                        //TODO deal with directions
-                        //TODO deal with random type (random or weighted)
-                        target += (Vector3)Utils.MagnitudeAngleToVector2(Random.Range(command.random.x, command.random.y), Random.Range(0f, 360f));
-                    }
-                    if (command.maxStep > 0)
-                    {
-                        Vector2 dir = (Vector2)target - (Vector2)transform.position;
-                        dir = dir.normalized * command.maxStep;
-                        target = transform.position + (Vector3)dir;
-                    }
+                    target = _GetTarget(command);
+                    targetSet = true;
                 }
-                target.z = transform.position.z;
-                targetSet = true;
+                catch (System.Exception e)
+                {
+                    Debug.LogException(e, this);
+                    return;
+                }
             }
             else if (command.recalculate)
                 target = (Vector3)command.transformTarget.position;
-            SetFacing(Utils.AngleBetween(transform.position, target));
-            // If a 'facingCommand' variant, do not poceed to actual movement code.
-           if (command.facingCommand)
-            {
-                NextNode();
-                return;
-            }
 
+            SetFacing(Utils.AngleBetween(transform.position, target));
             if (command.instant)
-            {
                 transform.position = target;
+            // If a 'facingCommand' variant, do not poceed to actual movement code.
+            if (command.facingCommand || command.instant)
+            {
                 NextNode();
                 return;
             }
@@ -301,7 +336,7 @@ namespace BKB_RPG {
         }
 
 
-        void Tick() {
+        public void Tick() {
 			if (Pause || commands.Count == 0)
 				return;
 			SetAnimation("speed", 0);
