@@ -8,5 +8,6 @@
             command_type = CommandTypes.Wait;
             time = 1;
         }
+
     }
 }

@@ -33,7 +33,24 @@ public class Drawer_Mover : Editor
 		if (myScript.commands == null) {
             myScript.commands = new List<MovementCommand>();
         }
+        // Check if InstanceID changed, if so deep copy Command List
+        int id = myScript.GetInstanceID();
+        if (myScript.myID != id)
+        {
+            myScript.myID = id;
+            DeepCloneCommands();
+        }
         
+    }
+
+    void DeepCloneCommands() {
+        List<MovementCommand> commands = new List<MovementCommand>();
+        foreach (MovementCommand c in myScript.commands)
+        {
+            commands.Add(ScriptableObject.Instantiate(c));
+        }
+        myScript.commands = commands;
+        Debug.Log("done");
     }
 
 	// manage handlers and arrow display of path
@@ -207,6 +224,8 @@ public class Drawer_Mover : Editor
                 "Repeat loops to start. Ping-pong advances to end, then start, then end. ResetAndLoop reverts to start position and then loops."));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("reverse"),
                 new GUIContent("Reverse", "When True, nextNode-- rather than ++"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("alwaysAnimate"),
+                new GUIContent("Always Animate", "Play animation even when not moving?"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("lockFacing"),
                 new GUIContent("Lock Facing", "Facing will not change when true."));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("ignore_impossible"),

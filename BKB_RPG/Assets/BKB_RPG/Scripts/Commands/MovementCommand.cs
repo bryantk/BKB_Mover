@@ -13,5 +13,6 @@ namespace BKB_RPG {
         public MovementCommand() {
             expandedInspector = true;
         }
-	}
+
+    }
 }

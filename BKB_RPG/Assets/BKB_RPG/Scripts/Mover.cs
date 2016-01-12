@@ -6,6 +6,7 @@ namespace BKB_RPG {
 	[RequireComponent(typeof(CircleCollider2D))]
     [System.Serializable]
 	public class Mover : MonoBehaviour {
+        // enum definitions.
 		public enum RepeatBehavior{None, PingPong, Loop, ResetAndLoop}; 
 		public enum Speed{Slowest=5, Slower=15, Slow=30, Normal=50, Faster=100, Fastest=200}
         public enum aSpeed { None = 0, Slowest = 5, Slower = 10, Normal = 20, Faster = 30, Fastest = 40 }
@@ -55,7 +56,7 @@ namespace BKB_RPG {
 
 
         // TODO
-        public bool steppingAnimation = false;
+        public bool alwaysAnimate = false;
         public bool clipEnties = false;
         public bool clipAll = false;
         
@@ -66,7 +67,6 @@ namespace BKB_RPG {
         // Movement Command helpers
         bool targetSet = false;
         Vector3 target;
-        int depth = 0;
         float nearestPixel = 0;
 
         #region Inspector Drawer Options
@@ -91,6 +91,8 @@ namespace BKB_RPG {
         Animator anim;
         Renderer render;
         #endregion
+        public int myID = 0;
+
 
         // TODO - this will be called be the manager object
         void Start() {
@@ -118,6 +120,10 @@ namespace BKB_RPG {
                 nearestPixel = pixel.resolution;
 
             SetAnimation("8-dir", ((int)directions >= 8));
+            if (alwaysAnimate)
+                SetAnimation("speed", animation_rate);
+            else
+                SetAnimation("speed", 0);
 
             currentNode = -1;
             NextNode();
@@ -128,7 +134,8 @@ namespace BKB_RPG {
             waitTime = 0;
             targetSet = false;
             currentNode += (reverse ? -1 : 1);
-			if (currentNode >= commands.Count) {
+			if (currentNode >= commands.Count)
+            {
 				switch (repeat) {
 				case RepeatBehavior.PingPong:
 					reverse = true;
@@ -145,7 +152,7 @@ namespace BKB_RPG {
 					Pause = true;
 					break;
 				}
-			} else if (currentNode <= -1) {
+			} else if (currentNode < 0) {
 				if (!reverse)
 					return;
 				switch (repeat) {
@@ -222,8 +229,7 @@ namespace BKB_RPG {
                 //  random
                 //      lock to 4, 8, free directions
                 float magnitude = command.maxStep;
-                if (command.random.magnitude > 0)
-                    magnitude = Random.Range(command.random.x, command.random.y);
+                // add random direction
                 result = Utils.AngleMagnitudeToVector2(facing + command.offsetAngle, magnitude);
                 result += transform.position;
                 break;
@@ -238,24 +244,11 @@ namespace BKB_RPG {
                 }
                 else if (command.randomType == MovementCommand_Move.RandomTypes.Area)
                 {
-                    //TODO deal with directions
-                    float angle = 0;
-                    switch (directions)
-                    {
-                    case movementDirections.four:
-                        angle = 90 * Random.Range(0, 4);
-                        break;
-                    case movementDirections.eight:
-                        angle = 45 * Random.Range(0, 8);
-                        break;
-                    case movementDirections.free:
-                        angle = Random.Range(0, 359);
-                        break;
-                    }
                     //TODO deal with random type (random or weighted)
-                    result += (Vector3)Utils.AngleMagnitudeToVector2(angle, Random.Range(command.random.x, command.random.y));
+                    result += (Vector3)Utils.RandomAreaByDirection(0, 360, 360 / (int)directions, Random.Range(command.random.x, command.random.y));
                 }
             }
+            // Do not excced maxStep distance when moveing.
             if (command.maxStep > 0 && command.move_type != MovementCommand_Move.MoverTypes.Angle)
             {
                 Vector2 dir = (Vector2)result - (Vector2)transform.position;
@@ -267,8 +260,10 @@ namespace BKB_RPG {
             
         }
 
+
         void _MoveCommands() {
-            SetAnimation("speed", 0);
+            if (!alwaysAnimate)
+                SetAnimation("speed", 0);
             MovementCommand_Move command = (MovementCommand_Move)commands[currentNode];
             if (!targetSet)
             {
@@ -318,6 +313,13 @@ namespace BKB_RPG {
             case MovementCommand_Bool.FlagType.IgnoreImpossible:
                 ignore_impossible = command.Bool;
                 break;
+            case MovementCommand_Bool.FlagType.AlwaysAnimate:
+                alwaysAnimate = command.Bool;
+                if (alwaysAnimate)
+                    SetAnimation("speed", animation_rate);
+                else
+                    SetAnimation("speed", 0);
+                break;
             case MovementCommand_Bool.FlagType.Invisible:
                 if (render != null)
                     render.enabled = !command.Bool;
@@ -339,7 +341,7 @@ namespace BKB_RPG {
         public void Tick() {
 			if (Pause || commands.Count == 0)
 				return;
-			SetAnimation("speed", 0);
+            
             var command_type = commands[currentNode].GetType();
             if (command_type == typeof(MovementCommand_Wait))
             {
@@ -378,14 +380,12 @@ namespace BKB_RPG {
         }
 
         // private?
-        public virtual int StepTowards(Vector3 target, float stopWithin = 0f) {
-			depth++;
+        public virtual int StepTowards(Vector3 target, float stopWithin = 0f, bool trySlide=true) {
 			Vector2 dir = target - transform.position;
 			// within destination?
 			if (dir.magnitude <= Mathf.Max(speed, Mathf.Max(nearestPixel, stopWithin))) {
                 if (stopWithin == 0)
     				transform.position = target;
-				depth = 0;
 				return (int)results.Complete;
 			}
 			// ray cast
@@ -397,18 +397,16 @@ namespace BKB_RPG {
 					Debug.LogWarning(this.name + " colliding with self.");
 				}
 
-				if (slide && depth < 2) {
+				if (slide && trySlide) {
 					Vector3 t = Vector3.Cross(dir.normalized, hit.normal);
 					t = Vector3.Cross(hit.normal, t);
 					t.z = 0;
-					return StepTowards (transform.position + (Vector3)t.normalized, stopWithin);
+					return StepTowards (transform.position + (Vector3)t.normalized, stopWithin, false);
 				}
-				depth = 0;
 				return (int)results.Hit;
 			}
 			// move some
 			transform.position += (Vector3)dir.normalized * speed;
-			depth = 0;
 			return (int)results.Nil;
 		}
 

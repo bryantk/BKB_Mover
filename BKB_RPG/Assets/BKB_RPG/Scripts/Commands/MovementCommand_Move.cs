@@ -44,5 +44,6 @@ namespace BKB_RPG {
             recalculate = false;
             facingCommand = false;
         }
+
     }
 }

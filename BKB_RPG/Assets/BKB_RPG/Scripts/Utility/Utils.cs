@@ -43,7 +43,13 @@ namespace BKB_RPG {
             return rotation * (Vector3.right * magnitude);
         }
 
-        
+        public static Vector2 RandomAreaByDirection(int min, int max, int directions = 360, float unitDistance = 1) {
+            min = min / directions;
+            max = max / directions;
+            int angle = Random.Range(min, max) * directions;
+            return AngleMagnitudeToVector2(angle, unitDistance);
+        }
+
 
         public static float Vector2Angle(Vector2 v) {
             if (v == Vector2.zero)
