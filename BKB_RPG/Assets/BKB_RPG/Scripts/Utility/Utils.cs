@@ -50,6 +50,17 @@ namespace BKB_RPG {
             return AngleMagnitudeToVector2(angle, unitDistance);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="angle"></param>
+        /// <param name="dir">4 = 90, 8 = 45, 360 = 360</param>
+        /// <returns></returns>
+        public static int ClampAngle(float angle, int dir) {
+            int step = 360 / dir;
+            return (Mathf.RoundToInt(angle / step) * step) % 360;
+        }
+
 
         public static float Vector2Angle(Vector2 v) {
             if (v == Vector2.zero)

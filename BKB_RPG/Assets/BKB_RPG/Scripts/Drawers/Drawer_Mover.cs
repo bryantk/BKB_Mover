@@ -72,7 +72,7 @@ public class Drawer_Mover : Editor
                 Handles.Label(lastPos + textOffset, i.ToString() + " : Wait: " + command.time.ToString(), style);
                 textOffset += offsetAmount;
             }
-            else if (command_type == typeof(MovementCommand_Move))
+            else if (command_type == typeof(MovementCommand_Move) || command_type == typeof(MovementCommand_Face))
             {
                 // Reset Text Offset
                 textOffset = Vector3.right * 0.15f + Vector3.down * 0.1f;
@@ -284,6 +284,7 @@ public class Drawer_Mover : Editor
             string stats = "";
             switch (command.command_type) {
             case MovementCommand.CommandTypes.Move:
+            case MovementCommand.CommandTypes.Face:
                 MovementCommand_Move move_command = (MovementCommand_Move)command;
                 switch (move_command.move_type) {
                 case MovementCommand_Move.MoverTypes.To_transform:
@@ -359,14 +360,13 @@ public class Drawer_Mover : Editor
                 switch (command.command_type) {
                 // Move command
                 case MovementCommand.CommandTypes.Move:
+                case MovementCommand.CommandTypes.Face:
                     MovementCommand_Move move_command = (MovementCommand_Move)command;
                     move_command.move_type = (MovementCommand_Move.MoverTypes)EditorGUILayout.EnumPopup(
                         "", move_command.move_type, GUILayout.Width(135));
                     // Random choices and values
                     string[] displayText = { "None", "Linear", "Area" };
                     int[] index = { 0, 1, 2 };
-                    // If facing command, limit choices later
-                    move_command.facingCommand = EditorGUILayout.Toggle("Facing Command", move_command.facingCommand);
                     // Types
                     switch (move_command.move_type) {
                     case MovementCommand_Move.MoverTypes.Relative:
@@ -377,7 +377,8 @@ public class Drawer_Mover : Editor
                         move_command.transformTarget = EditorGUILayout.ObjectField("Target",
                                                                               move_command.transformTarget,
                                                                               typeof(Transform), true) as Transform;
-                        move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", move_command.recalculate);
+                        if (!move_command.facingCommand)
+                            move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", move_command.recalculate);
                         break;
                     case MovementCommand_Move.MoverTypes.ObjName:
                         move_command.targetName = EditorGUILayout.TextField("Target Name", move_command.targetName);
@@ -386,6 +387,7 @@ public class Drawer_Mover : Editor
                             if (obj != null)
                                 move_command.transformTarget = obj.transform;
                         }
+                        Debug.Log(move_command.facingCommand);
                         if (!move_command.facingCommand)
                             move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", move_command.recalculate);
                         break;
@@ -405,8 +407,9 @@ public class Drawer_Mover : Editor
                         break;
                     }
 
-                    if (move_command.facingCommand)
+                    if (move_command.command_type == MovementCommand.CommandTypes.Face)
                     {
+                        move_command.maxStep = 1;
                         break;
                     }
                     // Extra Move Command options
@@ -470,6 +473,9 @@ public class Drawer_Mover : Editor
         {
         case MovementCommand.CommandTypes.Move:
             myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Move>());
+            break;
+        case MovementCommand.CommandTypes.Face:
+            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Face>());
             break;
         case MovementCommand.CommandTypes.Wait:
             myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Wait>());

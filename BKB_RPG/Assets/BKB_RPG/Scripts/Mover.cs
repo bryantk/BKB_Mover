@@ -94,18 +94,6 @@ namespace BKB_RPG {
         public int myID = 0;
 
 
-        // TODO - this will be called be the manager object
-        void Start() {
-
-		}
-
-        // TODO - this will be called be the manager object
-        // Update is called once per frame
-        void Update () {
-
-		}
-
-
 		public void Setup() {
 			if (reverse && repeat == RepeatBehavior.None)
 				Pause = true;
@@ -128,6 +116,7 @@ namespace BKB_RPG {
             currentNode = -1;
             NextNode();
         }
+
 
         // TODO - Refacter into less
         void NextNode() {
@@ -174,10 +163,11 @@ namespace BKB_RPG {
 			}
 		}
 
+
         void SetFacing(float value) {
             if (lockFacing)
                 return;
-            facing = value;
+            facing = Utils.ClampAngle(value, (int)directions);
             Vector2 f = Utils.AngleMagnitudeToVector2(facing, 1);
             SetAnimation("x", f.x);
             SetAnimation("y", f.y);
@@ -201,7 +191,6 @@ namespace BKB_RPG {
             if (paused == on)
                 return;
             paused = on;
-            print("set paused: " + on);
         }
 
         Vector3 _GetTarget(MovementCommand_Move command) {
@@ -280,16 +269,15 @@ namespace BKB_RPG {
             }
             else if (command.recalculate)
                 target = (Vector3)command.transformTarget.position;
-
             SetFacing(Utils.AngleBetween(transform.position, target));
-            if (command.instant)
-                transform.position = target;
             // If a 'facingCommand' variant, do not poceed to actual movement code.
-            if (command.facingCommand || command.instant)
+            if (command.facingCommand)
             {
                 NextNode();
                 return;
             }
+            if (command.instant)
+                transform.position = target;
             int result = StepTowards(target, command.withinDistance);
             if (result == 1 || (result == 2 && ignore_impossible)) {
                 NextNode();
@@ -349,7 +337,7 @@ namespace BKB_RPG {
                 if (waitTime >= ((MovementCommand_Wait)commands[currentNode]).time)
                     NextNode();
             }
-            else if (command_type == typeof(MovementCommand_Move))
+            else if (command_type == typeof(MovementCommand_Move) || command_type == typeof(MovementCommand_Face))
             {
                 _MoveCommands();
             }
@@ -380,7 +368,7 @@ namespace BKB_RPG {
         }
 
         // private?
-        public virtual int StepTowards(Vector3 target, float stopWithin = 0f, bool trySlide=true) {
+        public int StepTowards(Vector3 target, float stopWithin = 0f, bool trySlide=true) {
 			Vector2 dir = target - transform.position;
 			// within destination?
 			if (dir.magnitude <= Mathf.Max(speed, Mathf.Max(nearestPixel, stopWithin))) {
