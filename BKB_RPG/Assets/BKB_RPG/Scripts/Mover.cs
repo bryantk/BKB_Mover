@@ -13,8 +13,8 @@ namespace BKB_RPG {
         public enum movementDirections { four=4, eight=8, free=360}
         // movement pathing results
         public enum results{Nil = 0, Complete = 1, Hit = 2};
-
-		public List<MovementCommand> commands;
+        [SerializeField]
+        public List<MovementCommand> commands;
         // Move speed
 		public RepeatBehavior repeat = RepeatBehavior.None;
 		public Speed move_speed = Speed.Normal;

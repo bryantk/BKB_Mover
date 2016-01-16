@@ -20,6 +20,7 @@ public class Drawer_Mover : Editor
         style = new GUIStyle();
         style.normal.textColor = Color.white;
         style.fontSize = 8;
+
         int master_count = FindObjectsOfType<MasterMover>().Length;
 		if (master_count == 0) {
 			Debug.LogWarning("No MoverMasters found... Creating");
@@ -31,6 +32,7 @@ public class Drawer_Mover : Editor
 			Debug.LogWarning(master_count.ToString() + " MoverMasters found, should be 1.");
 		masterMover = FindObjectOfType<MasterMover>();
 		if (myScript.commands == null) {
+            Debug.LogWarning("Created command list");
             myScript.commands = new List<MovementCommand>();
         }
         // Check if InstanceID changed, if so deep copy Command List
@@ -40,8 +42,8 @@ public class Drawer_Mover : Editor
             myScript.myID = id;
             DeepCloneCommands();
         }
-        
     }
+
 
     void DeepCloneCommands() {
         List<MovementCommand> commands = new List<MovementCommand>();
@@ -50,8 +52,8 @@ public class Drawer_Mover : Editor
             commands.Add(ScriptableObject.Instantiate(c));
         }
         myScript.commands = commands;
-        Debug.Log("done");
     }
+
 
 	// manage handlers and arrow display of path
 	void OnSceneGUI() {
@@ -96,7 +98,6 @@ public class Drawer_Mover : Editor
                         Utils.DrawDottedArrow(lastPos, target, Color.red);
                     else
                         Utils.DrawArrow(lastPos, target, Color.red);
-                    // Draw Handle
                     command.target = Handles.FreeMoveHandle(command.target, Quaternion.identity, 0.125f, Vector3.one, Handles.SphereCap);
                     break;
                 case MovementCommand_Move.MoverTypes.To_transform:
@@ -109,31 +110,21 @@ public class Drawer_Mover : Editor
                         Utils.DrawArrow(lastPos, target, Color.green);
                     break;
                 case MovementCommand_Move.MoverTypes.Angle:
-
                     target += (Vector3)Utils.AngleMagnitudeToVector2(command.offsetAngle, command.maxStep);
                     Vector3 temp2 = target;
                     temp2 = Handles.FreeMoveHandle(temp2, Quaternion.identity, 0.125f, Vector3.one, Handles.SphereCap);
                     temp2 = temp2 - lastPos;
                     command.maxStep = temp2.magnitude;
-                    // TODO - convert vector to angle
-                    temp2 = temp2.normalized;
-                    //if (temp2.x < 0)
-                    //    command.angle = 180 + Vector2.Angle(Vector2.up, temp2.normalized);
-                    //else
-                    //    command.angle = Vector2.Angle(Vector2.up, temp2.normalized);
-
+                    command.offsetAngle = Utils.Vector2Angle((Vector2)temp2);
                     if (command.instant)
                         Utils.DrawDottedArrow(lastPos, target, Color.cyan);
                     else
                         Utils.DrawArrow(lastPos, target, Color.cyan);
-                    // TODO - manage Handlers
                     break;
                 }
                 lastPos = target;
                 if (myScript.advanceDebugDraw && command.move_type != MovementCommand_Move.MoverTypes.Angle)
                 {
-                    // TODO - Angle move does not use these
-                    // TODO - Facing commands do not use
                     // Within Distance.
                     Vector3 withinRadius = lastPos + new Vector3(command.withinDistance, 0, 0);
                     Vector3 withinSlider = Handles.Slider(withinRadius, Vector3.right, 0.75f, Handles.ArrowCap, 1);
@@ -330,10 +321,6 @@ public class Drawer_Mover : Editor
             case MovementCommand.CommandTypes.Wait:
                 stats = ((MovementCommand_Wait)command).time.ToString() + " seconds";
                 break;
-            // TODO
-            //case MovementCommand.CommandTypes.Teleport:
-            //    stats = "Teleport to " + command.myVector2.ToString();
-            //    break;
             case MovementCommand.CommandTypes.Boolean:
                 MovementCommand_Bool boolCommand = (MovementCommand_Bool)command;
                 stats = string.Format("{0} : {1}", boolCommand.flag, boolCommand.Bool);
@@ -400,6 +387,8 @@ public class Drawer_Mover : Editor
                         string[] display = { "Forward", "Right", "Left", "Backwards"};
                         int[] degrees = { 0, 90, -90, 180 };
                         move_command.offsetAngle = (float)EditorGUILayout.IntPopup("Direction", (int)move_command.offsetAngle, display, degrees);
+                        move_command.offsetAngle = EditorGUILayout.FloatField("Angle", move_command.offsetAngle);
+                        move_command.offsetAngle = Utils.ClampAngle(move_command.offsetAngle, (int)myScript.directions);
                         if (!move_command.facingCommand)
                             move_command.maxStep = EditorGUILayout.FloatField(new GUIContent("Distance", "Distance to move."), move_command.maxStep);
                         break;

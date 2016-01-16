@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+
 namespace BKB_RPG {
     [System.Serializable]
     public class MovementCommand_Face : MovementCommand_Move {
