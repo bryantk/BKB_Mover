@@ -226,6 +226,10 @@ Prefab:
       propertyPath: commands.Array.data[1]
       value: 
       objectReference: {fileID: 131481408}
+    - target: {fileID: 11450272, guid: 4426bdca936c106499536128b85e405d, type: 2}
+      propertyPath: advanceDebugDraw
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 4426bdca936c106499536128b85e405d, type: 2}
   m_IsPrefabParent: 0
@@ -565,13 +569,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e772925bd1fe7440a9483293b4ddd21, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  commands:
-  - {fileID: 1246044429}
-  - {fileID: 131481408}
-  repeat: 2
+  repeat: 0
   move_speed: 50
   animation_speed: 20
-  directions: 8
+  directions: 4
   currentNode: 0
   facing: 0
   spread: 0.75
@@ -588,10 +589,10 @@ MonoBehaviour:
   startPosition: {x: 0.98, y: 5.35, z: 0}
   scrollPos: {x: 0, y: 0}
   showSettings: 0
-  showOptions: 0
-  showQuickCommands: 1
+  showOptions: 1
+  showQuickCommands: 0
   advanceDebugDraw: 1
-  myID: 7514
+  myID: 7522
 --- !u!58 &603431651
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -788,7 +789,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e772925bd1fe7440a9483293b4ddd21, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  commands: []
   repeat: 3
   move_speed: 50
   animation_speed: 3
@@ -1691,7 +1691,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e772925bd1fe7440a9483293b4ddd21, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  commands: []
   repeat: 0
   move_speed: 5
   animation_speed: 3
@@ -2327,7 +2326,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e772925bd1fe7440a9483293b4ddd21, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  commands: []
   repeat: 0
   move_speed: 50
   animation_speed: 3
@@ -2658,7 +2656,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e772925bd1fe7440a9483293b4ddd21, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  commands: []
   repeat: 3
   move_speed: 50
   animation_speed: 3

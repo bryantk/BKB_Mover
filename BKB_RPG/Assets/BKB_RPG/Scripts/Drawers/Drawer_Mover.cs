@@ -33,7 +33,7 @@ public class Drawer_Mover : Editor
 		masterMover = FindObjectOfType<MasterMover>();
 		if (myScript.commands == null) {
             Debug.LogWarning("Created command list");
-            myScript.commands = new List<MovementCommand>();
+            myScript.commands = new CommandList();
         }
         // Check if InstanceID changed, if so deep copy Command List
         int id = myScript.GetInstanceID();
@@ -46,10 +46,10 @@ public class Drawer_Mover : Editor
 
 
     void DeepCloneCommands() {
-        List<MovementCommand> commands = new List<MovementCommand>();
+        CommandList commands = new CommandList();
         foreach (MovementCommand c in myScript.commands)
         {
-            commands.Add(ScriptableObject.Instantiate(c));
+            commands.Add(c);//ScriptableObject.Instantiate(c));
         }
         myScript.commands = commands;
     }
@@ -442,8 +442,8 @@ public class Drawer_Mover : Editor
                     break;
                 case MovementCommand.CommandTypes.Script:
                     MovementCommand_Script scriptCommand = (MovementCommand_Script)command;
-                    SerializedObject o = new SerializedObject(scriptCommand);
-                    EditorGUILayout.PropertyField(o.FindProperty("events"), new GUIContent("calls"), GUILayout.Width(275));
+                    //SerializedObject o = new SerializedObject(scriptCommand);
+                    //EditorGUILayout.PropertyField(o.FindProperty("events"), new GUIContent("calls"), GUILayout.Width(275));
                     break;
                 default:
                     EditorGUILayout.LabelField("ERROR");
@@ -461,22 +461,22 @@ public class Drawer_Mover : Editor
         switch (commandType)
         {
         case MovementCommand.CommandTypes.Move:
-            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Move>());
+            myScript.commands.Insert(index, new MovementCommand_Move());//  ScriptableObject.CreateInstance<MovementCommand_Move>());
             break;
         case MovementCommand.CommandTypes.Face:
-            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Face>());
+            myScript.commands.Insert(index, new MovementCommand_Face());//  ScriptableObject.CreateInstance<MovementCommand_Face>());
             break;
         case MovementCommand.CommandTypes.Wait:
-            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Wait>());
+            myScript.commands.Insert(index, new MovementCommand_Wait());//  ScriptableObject.CreateInstance<MovementCommand_Wait>());
             break;
         case MovementCommand.CommandTypes.Boolean:
-            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Bool>());
+            myScript.commands.Insert(index, new MovementCommand_Bool());//  ScriptableObject.CreateInstance<MovementCommand_Bool>());
             break;
         case MovementCommand.CommandTypes.GoTo:
-            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_GOTO>());
+            myScript.commands.Insert(index, new MovementCommand_GOTO());//  ScriptableObject.CreateInstance<MovementCommand_GOTO>());
             break;
         case MovementCommand.CommandTypes.Script:
-            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Script>());
+            myScript.commands.Insert(index, new MovementCommand_Script());// ScriptableObject.CreateInstance<MovementCommand_Script>());
             break;
         
         }
@@ -575,7 +575,7 @@ public class Drawer_Mover : Editor
 	}
 
 	void ClearAll() {
-		myScript.commands = new List<MovementCommand>();
+		myScript.commands = new CommandList();
 	}
 
 	void RemoveAt(object data) {
@@ -602,7 +602,7 @@ public class Drawer_Mover : Editor
 
 	void InsertNewCommand(object data) {
 		int id = System.Convert.ToInt32(data);
-		myScript.commands.Insert(id, ScriptableObject.CreateInstance<MovementCommand_Move>());
+        myScript.commands.Insert(id, new MovementCommand_Move()); // ScriptableObject.CreateInstance<MovementCommand_Move>());
 	}
 
     // for move commands so far
@@ -610,7 +610,7 @@ public class Drawer_Mover : Editor
 		int[] args = data as int[];
 		int index = args[0];
 
-        MovementCommand_Move command = ScriptableObject.CreateInstance<MovementCommand_Move>();
+        MovementCommand_Move command = new MovementCommand_Move();// ScriptableObject.CreateInstance<MovementCommand_Move>();
         command.move_type = MovementCommand_Move.MoverTypes.Relative;
         switch (args[1]) {
 		case 1:	// move up

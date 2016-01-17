@@ -2,7 +2,7 @@
 
 namespace BKB_RPG {
 	[System.Serializable]
-	public class MovementCommand : ScriptableObject {
+	public class MovementCommand {
 
 		public enum CommandTypes {Move, Face, Wait, GoTo, Boolean, Script};
         // What kind of command is this?
