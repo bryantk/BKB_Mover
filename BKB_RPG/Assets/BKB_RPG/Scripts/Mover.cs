@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.Events;
 using UnityEditor;
 using System.Collections.Generic;
 
@@ -31,6 +32,11 @@ namespace BKB_RPG {
         public int currentNode;
         public float facing;
 
+        public bool showScripts = true;
+        public UnityEvent onStart = new UnityEvent();
+        public UnityEvent onComplete = new UnityEvent();
+        public UnityEvent eventA = new UnityEvent();
+        public UnityEvent eventB = new UnityEvent();
 
         #region Movement Options
         // % spread of raycasts. 1 = flush with collider radius.
@@ -59,7 +65,6 @@ namespace BKB_RPG {
         public bool alwaysAnimate = false;
         public bool clipEnties = false;
         public bool clipAll = false;
-        
 
         // Wait Command helpers
         float waitTime = 0;
@@ -95,7 +100,7 @@ namespace BKB_RPG {
 
 
 		public void Setup() {
-			if (reverse && repeat == RepeatBehavior.None)
+            if (reverse && repeat == RepeatBehavior.None)
 				Pause = true;
 			startPosition = transform.position;
 			if (radius == 0)
@@ -115,8 +120,14 @@ namespace BKB_RPG {
 
             currentNode = -1;
             NextNode();
+            if (onStart != null)
+                onStart.Invoke();
         }
 
+        // Call on self 'onComplete' to only run once.
+        public void RunOnCompleteScriptsOnce() {
+            onComplete = new UnityEvent();
+        }
 
         // TODO - Refacter into less
         void NextNode() {
@@ -125,6 +136,8 @@ namespace BKB_RPG {
             currentNode += (reverse ? -1 : 1);
 			if (currentNode >= commands.Count)
             {
+                if (onComplete != null)
+                    onComplete.Invoke();
 				switch (repeat) {
 				case RepeatBehavior.PingPong:
 					reverse = true;
@@ -209,17 +222,11 @@ namespace BKB_RPG {
                 if (command.transformTarget == null)
                     throw new System.Exception(string.Format("Command {0} target not set on object '{1}'", currentNode, name));
                 result = command.transformTarget.position;
-                result = command.transformTarget.position;
                 break;
             case MovementCommand_Move.MoverTypes.Angle:
-                // TODO - Implement random angle
-                //  offset current
-                //      lock to 4, 8, free directions
-                //  random
-                //      lock to 4, 8, free directions
+                float angle = Utils.ClampAngle(command.offsetAngle, (int)directions);
                 float magnitude = command.maxStep;
-                // add random direction
-                result = Utils.AngleMagnitudeToVector2(facing + command.offsetAngle, magnitude);
+                result = Utils.AngleMagnitudeToVector2(facing + angle, magnitude);
                 result += transform.position;
                 break;
             }
@@ -237,7 +244,7 @@ namespace BKB_RPG {
                     result += (Vector3)Utils.RandomAreaByDirection(0, 360, 360 / (int)directions, Random.Range(command.random.x, command.random.y));
                 }
             }
-            // Do not excced maxStep distance when moveing.
+            // Do not excced maxStep distance when moving.
             if (command.maxStep > 0 && command.move_type != MovementCommand_Move.MoverTypes.Angle)
             {
                 Vector2 dir = (Vector2)result - (Vector2)transform.position;
@@ -246,7 +253,6 @@ namespace BKB_RPG {
             }
             result.z = transform.position.z;
             return result;
-            
         }
 
 
@@ -266,16 +272,33 @@ namespace BKB_RPG {
                     Debug.LogException(e, this);
                     return;
                 }
+                // if facing command, modify target
+                if (command.command_type == MovementCommand.CommandTypes.Face)
+                {
+                    float random = facing;
+                    if (command.randomType == MovementCommand_Move.RandomTypes.Linear)
+                    {
+                        random += Random.Range(command.random.x, command.random.y);
+                    }
+                    else if (command.randomType == MovementCommand_Move.RandomTypes.Area)
+                    {
+                        if (Random.value >= 0.5f)
+                            random += Random.Range(command.random.x, command.random.y);
+                        else
+                            random += Random.Range(command.random2.x, command.random2.y);
+                    } else
+                        random += command.offsetAngle;
+                    random = Utils.ClampAngle(random, (int)directions);
+                    target = transform.position + (Vector3)Utils.AngleMagnitudeToVector2(random, 1);
+                    SetFacing(Utils.AngleBetween(transform.position, target));
+                    NextNode();
+                    return;
+                }
             }
             else if (command.recalculate)
                 target = (Vector3)command.transformTarget.position;
-            SetFacing(Utils.AngleBetween(transform.position, target));
-            // If a 'facingCommand' variant, do not poceed to actual movement code.
-            if (command.facingCommand)
-            {
-                NextNode();
-                return;
-            }
+            if ((transform.position-target).magnitude > 0.1f)
+                SetFacing(Utils.AngleBetween(transform.position, target));
             if (command.instant)
                 transform.position = target;
             int result = StepTowards(target, command.withinDistance);
@@ -322,6 +345,18 @@ namespace BKB_RPG {
             case MovementCommand_Bool.FlagType.Pause:
                 Pause = command.Bool;
                 break;
+            case MovementCommand_Bool.FlagType.Script:
+                if (command.Bool)
+                {
+                    if (eventA != null)
+                        eventA.Invoke();
+                }
+                else
+                {
+                    if (eventB != null)
+                        eventB.Invoke();
+                }
+                break;
             }
         }
 
@@ -352,13 +387,6 @@ namespace BKB_RPG {
             {
                 currentNode = ((MovementCommand_GOTO)commands[currentNode]).gotoId;
                 // This command is a NoOp
-                Tick();
-            }
-            else if (command_type == typeof(MovementCommand_Script))
-            {
-                ((MovementCommand_Script)commands[currentNode]).events.Invoke();
-                // This command is a NoOp
-                NextNode();
                 Tick();
             }
             else

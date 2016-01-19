@@ -2,7 +2,7 @@
     [System.Serializable]
     public class MovementCommand_Bool : MovementCommand {
 
-        public enum FlagType { LockFacing, AlwaysAnimate, Clip, ClipAll, Invisible, IgnoreImpossible, Reverse, Pause};
+        public enum FlagType { LockFacing, AlwaysAnimate, Clip, ClipAll, Invisible, IgnoreImpossible, Reverse, Pause, Script};
         // What kind of bool command.
         public FlagType flag;
         public bool Bool;

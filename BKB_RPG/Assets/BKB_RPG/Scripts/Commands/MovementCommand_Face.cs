@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using UnityEngine;
 
 namespace BKB_RPG {
     [System.Serializable]
@@ -6,7 +6,6 @@ namespace BKB_RPG {
 
         public MovementCommand_Face() : base() {
             command_type = CommandTypes.Face;
-            facingCommand = true;
         }
 
     }

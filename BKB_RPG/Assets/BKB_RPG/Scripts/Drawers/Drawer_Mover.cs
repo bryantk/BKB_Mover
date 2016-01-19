@@ -115,7 +115,7 @@ public class Drawer_Mover : Editor
                     temp2 = Handles.FreeMoveHandle(temp2, Quaternion.identity, 0.125f, Vector3.one, Handles.SphereCap);
                     temp2 = temp2 - lastPos;
                     command.maxStep = temp2.magnitude;
-                    command.offsetAngle = Utils.Vector2Angle((Vector2)temp2);
+                    command.offsetAngle = Utils.Vector2toAngle((Vector2)temp2);
                     if (command.instant)
                         Utils.DrawDottedArrow(lastPos, target, Color.cyan);
                     else
@@ -175,9 +175,9 @@ public class Drawer_Mover : Editor
                 Handles.Label(lastPos + textOffset, i.ToString() + ": GOTO: " + command.gotoId, style);
                 textOffset += offsetAmount;
             }
-            else if (command_type == typeof(MovementCommand_Script))
+            else if (command_type == typeof(MovementCommand_Bool))
             {
-                Handles.Label(lastPos + textOffset, i.ToString() + ": Script", style);
+                Handles.Label(lastPos + textOffset, i.ToString() + ": Bool", style);
                 textOffset += offsetAmount;
             }
 		}
@@ -223,8 +223,10 @@ public class Drawer_Mover : Editor
                 new GUIContent("Skip Impossible", "On impossible move commands, advance to next command."));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("slide"), new GUIContent("Slide on hit?"));
         }
+        // Advanced Options
         myScript.showOptions = EditorGUILayout.Foldout(myScript.showOptions, "Advanced");
-        if (myScript.showOptions) {
+        if (myScript.showOptions)
+        {
             myScript.Pause = EditorGUILayout.Toggle("Paused", myScript.Pause);
             EditorGUILayout.PropertyField(serializedObject.FindProperty("advanceDebugDraw"),
                 new GUIContent("Advacned Debug", "Show advanced options in inspector GUI."));
@@ -240,8 +242,16 @@ public class Drawer_Mover : Editor
                 EditorGUILayout.IntSlider("Ray Count", serializedObject.FindProperty("ray_density").intValue, 1, 5);
             EditorGUI.indentLevel = 1;
         }
+        // Script options
+        myScript.showScripts = EditorGUILayout.Foldout(myScript.showScripts, "Script Calls");
+        if (myScript.showScripts)
+        {
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("onStart"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("onComplete"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("eventA"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("eventB"));
+        }
     }
-
 
     void DrawCommands() {
         // setup a scroll box for movement commands
@@ -324,13 +334,11 @@ public class Drawer_Mover : Editor
             case MovementCommand.CommandTypes.Boolean:
                 MovementCommand_Bool boolCommand = (MovementCommand_Bool)command;
                 stats = string.Format("{0} : {1}", boolCommand.flag, boolCommand.Bool);
+                if (boolCommand.flag == MovementCommand_Bool.FlagType.Script)
+                    stats = string.Format("Call Events {0}", boolCommand.Bool ? "A" : "B");
                 break;
             case MovementCommand.CommandTypes.GoTo:
                 stats = "GoTo command " + ((MovementCommand_GOTO)command).gotoId.ToString();
-                break;
-            case MovementCommand.CommandTypes.Script:
-                MovementCommand_Script events = (MovementCommand_Script)command;
-                stats = ((events.events != null) ? events.events.GetPersistentEventCount() : 0).ToString() + " calls";
                 break;
             default:
                 stats = command.command_type.ToString() + " not implemented";
@@ -347,7 +355,6 @@ public class Drawer_Mover : Editor
                 switch (command.command_type) {
                 // Move command
                 case MovementCommand.CommandTypes.Move:
-                case MovementCommand.CommandTypes.Face:
                     MovementCommand_Move move_command = (MovementCommand_Move)command;
                     move_command.move_type = (MovementCommand_Move.MoverTypes)EditorGUILayout.EnumPopup(
                         "", move_command.move_type, GUILayout.Width(135));
@@ -364,8 +371,7 @@ public class Drawer_Mover : Editor
                         move_command.transformTarget = EditorGUILayout.ObjectField("Target",
                                                                               move_command.transformTarget,
                                                                               typeof(Transform), true) as Transform;
-                        if (!move_command.facingCommand)
-                            move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", move_command.recalculate);
+                        move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", move_command.recalculate);
                         break;
                     case MovementCommand_Move.MoverTypes.ObjName:
                         move_command.targetName = EditorGUILayout.TextField("Target Name", move_command.targetName);
@@ -374,9 +380,7 @@ public class Drawer_Mover : Editor
                             if (obj != null)
                                 move_command.transformTarget = obj.transform;
                         }
-                        Debug.Log(move_command.facingCommand);
-                        if (!move_command.facingCommand)
-                            move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", move_command.recalculate);
+                        move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", move_command.recalculate);
                         break;
                     case MovementCommand_Move.MoverTypes.Angle:
                         // TODO - angle property field?
@@ -389,16 +393,9 @@ public class Drawer_Mover : Editor
                         move_command.offsetAngle = (float)EditorGUILayout.IntPopup("Direction", (int)move_command.offsetAngle, display, degrees);
                         move_command.offsetAngle = EditorGUILayout.FloatField("Angle", move_command.offsetAngle);
                         move_command.offsetAngle = Utils.ClampAngle(move_command.offsetAngle, (int)myScript.directions);
-                        if (!move_command.facingCommand)
-                            move_command.maxStep = EditorGUILayout.FloatField(new GUIContent("Distance", "Distance to move."), move_command.maxStep);
+                        move_command.maxStep = EditorGUILayout.FloatField(new GUIContent("Distance", "Distance to move."), move_command.maxStep);
                         break;
                     default:
-                        break;
-                    }
-
-                    if (move_command.command_type == MovementCommand.CommandTypes.Face)
-                    {
-                        move_command.maxStep = 1;
                         break;
                     }
                     // Extra Move Command options
@@ -420,6 +417,69 @@ public class Drawer_Mover : Editor
                     }
                     
                     break;
+
+                // Facing commands
+                case MovementCommand.CommandTypes.Face:
+                    MovementCommand_Face face_command = (MovementCommand_Face)command;
+                    face_command.move_type = (MovementCommand_Move.MoverTypes)EditorGUILayout.EnumPopup(
+                        "", face_command.move_type, GUILayout.Width(135));
+                    // Random choices and values
+                    string[] displayTextFace = { "Constant", "Between", "Between and Between" };
+                    int[] indexFace = { 0, 1, 2 };
+                    // Types
+                    switch (face_command.move_type)
+                    {
+                    case MovementCommand_Move.MoverTypes.Relative:
+                    case MovementCommand_Move.MoverTypes.Absolute:
+                        face_command.target = EditorGUILayout.Vector2Field("Destination", face_command.target);
+                        break;
+                    case MovementCommand_Move.MoverTypes.To_transform:
+                        face_command.transformTarget = EditorGUILayout.ObjectField("Target",
+                                                                              face_command.transformTarget,
+                                                                              typeof(Transform), true) as Transform;
+                        
+                        break;
+                    case MovementCommand_Move.MoverTypes.ObjName:
+                        face_command.targetName = EditorGUILayout.TextField("Target Name", face_command.targetName);
+                        if (face_command.targetName != "")
+                        {
+                            GameObject obj = GameObject.Find(face_command.targetName);
+                            if (obj != null)
+                                face_command.transformTarget = obj.transform;
+                        }
+                        break;
+                    case MovementCommand_Move.MoverTypes.Angle:
+                        // TODO - angle property field?
+                        string[] display = { "Forward", "Right", "Left", "Backwards" };
+                        int[] degrees = { 0, 90, -90, 180 };
+                        face_command.offsetAngle = (float)EditorGUILayout.IntPopup("Direction", (int)face_command.offsetAngle, display, degrees);
+                        break;
+                    default:
+                        break;
+                    }
+                    face_command.maxStep = 1;
+                    face_command.randomType = (MovementCommand_Move.RandomTypes)EditorGUILayout.IntPopup(
+                        "Offset", (int)face_command.randomType, displayTextFace, indexFace);
+                    EditorGUI.indentLevel = 2;
+                    if (face_command.randomType == MovementCommand_Move.RandomTypes.None)
+                    {
+                        face_command.offsetAngle = EditorGUILayout.FloatField("Angle", face_command.offsetAngle);
+                        face_command.offsetAngle = Utils.ClampAngle(face_command.offsetAngle, (int)myScript.directions);
+                    } else if (face_command.randomType == MovementCommand_Move.RandomTypes.Linear)
+                    {
+                        face_command.random = EditorGUILayout.Vector2Field(new GUIContent("between", "Choose random offset between X and Y."), face_command.random);
+                    }
+                    else
+                    {
+                        face_command.random = EditorGUILayout.Vector2Field(new GUIContent("between", "Choose random offset between X and Y."), face_command.random);
+                        EditorGUI.indentLevel = 3;
+                        EditorGUILayout.LabelField("and");
+                        EditorGUI.indentLevel = 2;
+                        face_command.random2 = EditorGUILayout.Vector2Field(new GUIContent("between", "Choose random offset between X and Y."), face_command.random2);
+                    }
+                    EditorGUI.indentLevel = 1;
+                    break;
+
                 // Wait Command
                 case MovementCommand.CommandTypes.Wait:
                     MovementCommand_Wait wait_command = (MovementCommand_Wait)command;
@@ -439,11 +499,6 @@ public class Drawer_Mover : Editor
                     MovementCommand_GOTO goto_command = (MovementCommand_GOTO)command;
                     goto_command.gotoId = EditorGUILayout.IntField("Command:", goto_command.gotoId, GUILayout.Width(185));
                     goto_command.gotoId = Mathf.Clamp(goto_command.gotoId, 0, myScript.commands.Count - 1);
-                    break;
-                case MovementCommand.CommandTypes.Script:
-                    MovementCommand_Script scriptCommand = (MovementCommand_Script)command;
-                    SerializedObject o = new SerializedObject(scriptCommand);
-                    EditorGUILayout.PropertyField(o.FindProperty("events"), new GUIContent("calls"), GUILayout.Width(275));
                     break;
                 default:
                     EditorGUILayout.LabelField("ERROR");
@@ -475,10 +530,6 @@ public class Drawer_Mover : Editor
         case MovementCommand.CommandTypes.GoTo:
             myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_GOTO>());
             break;
-        case MovementCommand.CommandTypes.Script:
-            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Script>());
-            break;
-        
         }
     }
 

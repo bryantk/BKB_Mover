@@ -24,25 +24,24 @@ namespace BKB_RPG {
         public RandomTypes randomType;
         // Choose random point from 'x' to 'y' of target as new target
         public Vector2 random;
+        // Choose random point from 'x' to 'y' of target as new target
+        public Vector2 random2;
         // Teleport to target
         public bool instant;
         // Readjust target each frame (follow a target transform)
         public bool recalculate;
-
-        // Facing command?
-        public bool facingCommand;
 
         public MovementCommand_Move() : base() {
             command_type = CommandTypes.Move;
             move_type = MoverTypes.Relative;
             randomType = RandomTypes.None;
             random = Vector2.zero;
+            random2 = Vector2.zero;
             offsetAngle = 0;
             maxStep = 0;
             withinDistance = 0;
             instant = false;
             recalculate = false;
-            facingCommand = false;
         }
 
     }

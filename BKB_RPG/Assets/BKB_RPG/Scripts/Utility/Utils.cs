@@ -62,7 +62,7 @@ namespace BKB_RPG {
         }
 
 
-        public static float Vector2Angle(Vector2 v) {
+        public static float Vector2toAngle(Vector2 v) {
             if (v == Vector2.zero)
                 return 0;
             float angle = Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg - 90f;
@@ -73,7 +73,15 @@ namespace BKB_RPG {
 
         public static float AngleBetween(Vector3 position, Vector3 target) {
             Vector2 r = target - position;
-            return Vector2Angle(r);
+            return Vector2toAngle(r);
+        }
+
+        public static Vector2 RotateVector2byAngle(Vector2 v, float angle) {
+            if (angle == 0)
+                return v;
+            float magnitude = v.magnitude;
+            float myAngle = (Vector2toAngle(v) + angle) % 360;
+            return AngleMagnitudeToVector2(myAngle, magnitude);
         }
 
         // Debug / Handles things
