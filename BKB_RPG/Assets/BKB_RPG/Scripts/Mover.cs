@@ -4,6 +4,7 @@ using UnityEditor;
 using System.Collections.Generic;
 
 namespace BKB_RPG {
+    [RequireComponent(typeof(Entity))]
 	[RequireComponent(typeof(CircleCollider2D))]
     [System.Serializable]
 	public class Mover : MonoBehaviour {
@@ -66,6 +67,8 @@ namespace BKB_RPG {
         public bool clipEnties = false;
         public bool clipAll = false;
 
+        private Entity entity;
+
         // Wait Command helpers
         float waitTime = 0;
 
@@ -99,7 +102,8 @@ namespace BKB_RPG {
         public int myID = 0;
 
 
-		public void Setup() {
+		public void Setup(Entity entity) {
+            this.entity = entity;
             if (reverse && repeat == RepeatBehavior.None)
 				Pause = true;
 			startPosition = transform.position;
@@ -177,7 +181,7 @@ namespace BKB_RPG {
 		}
 
 
-        void SetFacing(float value) {
+        public void SetFacing(float value) {
             if (lockFacing)
                 return;
             facing = Utils.ClampAngle(value, (int)directions);
@@ -419,6 +423,7 @@ namespace BKB_RPG {
 					t.z = 0;
 					return StepTowards (transform.position + (Vector3)t.normalized, stopWithin, false);
 				}
+                entity.OnCollision(hit.transform);
 				return (int)results.Hit;
 			}
 			// move some

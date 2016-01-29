@@ -8,7 +8,7 @@ public class Drawer_Mover : Editor
 {
     //important
     Mover myScript;
-    MasterMover masterMover;
+    EntityMaster masterMover;
 
     // settings
     GUIStyle style;
@@ -21,16 +21,16 @@ public class Drawer_Mover : Editor
         style.normal.textColor = Color.white;
         style.fontSize = 8;
 
-        int master_count = FindObjectsOfType<MasterMover>().Length;
+        int master_count = FindObjectsOfType<EntityMaster>().Length;
 		if (master_count == 0) {
 			Debug.LogWarning("No MoverMasters found... Creating");
 			GameObject obj = new GameObject();
-			obj.AddComponent<MasterMover>();
+			obj.AddComponent<EntityMaster>();
 			obj.name = "MasterMover";
 		}
 		if (master_count > 1)
 			Debug.LogWarning(master_count.ToString() + " MoverMasters found, should be 1.");
-		masterMover = FindObjectOfType<MasterMover>();
+		masterMover = FindObjectOfType<EntityMaster>();
 		if (myScript.commands == null) {
             Debug.LogWarning("Created command list");
             myScript.commands = new List<MovementCommand>();
