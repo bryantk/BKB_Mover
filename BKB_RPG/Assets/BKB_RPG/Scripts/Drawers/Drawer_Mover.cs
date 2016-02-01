@@ -40,7 +40,7 @@ public class Drawer_Mover : Editor
         if (myScript.myID != id)
         {
             myScript.myID = id;
-            DeepCloneCommands();
+            //DeepCloneCommands();
         }
     }
 
@@ -49,7 +49,7 @@ public class Drawer_Mover : Editor
         List<MovementCommand> commands = new List<MovementCommand>();
         foreach (MovementCommand c in myScript.commands)
         {
-            commands.Add(ScriptableObject.Instantiate(c));
+            //commands.Add(ScriptableObject.Instantiate(c));
         }
         myScript.commands = commands;
     }
@@ -67,22 +67,20 @@ public class Drawer_Mover : Editor
         for (int i = 0; i < myScript.commands.Count; i++) {
             // --- Command Switch -----------------------------------------------
 
-            var command_type = myScript.commands[i].GetType();
-            if (command_type == typeof(MovementCommand_Wait))
+            MovementCommand command = myScript.commands[i];
+            if (command.command_type == MovementCommand.CommandTypes.Wait)
             {
-                MovementCommand_Wait command = ((MovementCommand_Wait)myScript.commands[i]);
                 Handles.Label(lastPos + textOffset, i.ToString() + " : Wait: " + command.time.ToString(), style);
                 textOffset += offsetAmount;
             }
-            else if (command_type == typeof(MovementCommand_Move) || command_type == typeof(MovementCommand_Face))
+            else if (command.command_type == MovementCommand.CommandTypes.Move || command.command_type == MovementCommand.CommandTypes.Face)
             {
                 // Reset Text Offset
                 textOffset = Vector3.right * 0.15f + Vector3.down * 0.1f;
-                MovementCommand_Move command = ((MovementCommand_Move)myScript.commands[i]);
                 Vector3 target = lastPos;
                 switch (command.move_type)
                 {
-                case MovementCommand_Move.MoverTypes.Relative:
+                case MovementCommand.MoverTypes.Relative:
                     target += (Vector3)command.target;
                     if (command.instant)
                         Utils.DrawDottedArrow(lastPos, target, Color.blue);
@@ -92,7 +90,7 @@ public class Drawer_Mover : Editor
                     temp = Handles.FreeMoveHandle(temp, Quaternion.identity, 0.125f, Vector3.one, Handles.SphereCap);
                     command.target = temp - lastPos;
                     break;
-                case MovementCommand_Move.MoverTypes.Absolute:
+                case MovementCommand.MoverTypes.Absolute:
                     target = (Vector3)command.target;
                     if (command.instant)
                         Utils.DrawDottedArrow(lastPos, target, Color.red);
@@ -100,8 +98,8 @@ public class Drawer_Mover : Editor
                         Utils.DrawArrow(lastPos, target, Color.red);
                     command.target = Handles.FreeMoveHandle(command.target, Quaternion.identity, 0.125f, Vector3.one, Handles.SphereCap);
                     break;
-                case MovementCommand_Move.MoverTypes.To_transform:
-                case MovementCommand_Move.MoverTypes.ObjName:
+                case MovementCommand.MoverTypes.To_transform:
+                case MovementCommand.MoverTypes.ObjName:
                     if (command.transformTarget != null)
                         target = command.transformTarget.position;
                     if (command.instant)
@@ -109,7 +107,7 @@ public class Drawer_Mover : Editor
                     else
                         Utils.DrawArrow(lastPos, target, Color.green);
                     break;
-                case MovementCommand_Move.MoverTypes.Angle:
+                case MovementCommand.MoverTypes.Angle:
                     target += (Vector3)Utils.AngleMagnitudeToVector2(command.offsetAngle, command.maxStep);
                     Vector3 temp2 = target;
                     temp2 = Handles.FreeMoveHandle(temp2, Quaternion.identity, 0.125f, Vector3.one, Handles.SphereCap);
@@ -123,7 +121,7 @@ public class Drawer_Mover : Editor
                     break;
                 }
                 lastPos = target;
-                if (myScript.advanceDebugDraw && command.move_type != MovementCommand_Move.MoverTypes.Angle)
+                if (myScript.advanceDebugDraw && command.move_type != MovementCommand.MoverTypes.Angle)
                 {
                     // Within Distance.
                     Vector3 withinRadius = lastPos + new Vector3(command.withinDistance, 0, 0);
@@ -135,7 +133,7 @@ public class Drawer_Mover : Editor
                         Handles.DrawDottedLine(lastPos, withinRadius, 2.5f);
                     }
                     // Within Random.
-                    if (command.randomType == MovementCommand_Move.RandomTypes.Area)
+                    if (command.randomType == MovementCommand.RandomTypes.Area)
                     {
                         Handles.color = Color.yellow;
                         Vector3 randomRadiusMax = lastPos + Vector3.up * command.random.y;
@@ -159,7 +157,7 @@ public class Drawer_Mover : Editor
                             Handles.color = Color.white;
                         }
                     }
-                    else if (command.randomType == MovementCommand_Move.RandomTypes.Linear)
+                    else if (command.randomType == MovementCommand.RandomTypes.Linear)
                     {
                         // TODO - Draw line alone path
                     }
@@ -169,13 +167,12 @@ public class Drawer_Mover : Editor
                 Handles.Label(lastPos + textOffset, i.ToString() + " : Move", style);
                 textOffset += offsetAmount;
             }
-            else if (command_type == typeof(MovementCommand_GOTO))
+            else if (command.command_type == MovementCommand.CommandTypes.GoTo)
             {
-                MovementCommand_GOTO command = ((MovementCommand_GOTO)myScript.commands[i]);
                 Handles.Label(lastPos + textOffset, i.ToString() + ": GOTO: " + command.gotoId, style);
                 textOffset += offsetAmount;
             }
-            else if (command_type == typeof(MovementCommand_Bool))
+            else if (command.command_type == MovementCommand.CommandTypes.Boolean)
             {
                 Handles.Label(lastPos + textOffset, i.ToString() + ": Bool", style);
                 textOffset += offsetAmount;
@@ -278,7 +275,7 @@ public class Drawer_Mover : Editor
                 "", command.command_type, GUILayout.Width(75));
             // if user changed command type, show options
             if (commandType != command.command_type) {
-                _SwapCommand(commandType, i);
+                myScript.commands[i].SetMovementCommand(commandType);
                 return;
             }
             // Show quick info of command
@@ -286,59 +283,58 @@ public class Drawer_Mover : Editor
             switch (command.command_type) {
             case MovementCommand.CommandTypes.Move:
             case MovementCommand.CommandTypes.Face:
-                MovementCommand_Move move_command = (MovementCommand_Move)command;
-                switch (move_command.move_type) {
-                case MovementCommand_Move.MoverTypes.To_transform:
-                    if (move_command.transformTarget != null)
-                        stats = "TO: " + move_command.transformTarget.name;
+                switch (command.move_type) {
+                case MovementCommand.MoverTypes.To_transform:
+                    if (command.transformTarget != null)
+                        stats = "TO: " + command.transformTarget.name;
                     else
                         stats = "TO: NULL";
                     break;
-                case MovementCommand_Move.MoverTypes.ObjName:
-                    stats = "TO: " + move_command.targetName;
+                case MovementCommand.MoverTypes.ObjName:
+                    stats = "TO: " + command.targetName;
                     break;
                 default:
-                    Vector2 norm = move_command.target.normalized;
+                    Vector2 norm = command.target.normalized;
                     if (norm == Vector2.up)
-                        stats = "Up " + move_command.target.y;
+                        stats = "Up " + command.target.y;
                     else if (norm == Vector2.right)
-                        stats = "Right " + move_command.target.x;
+                        stats = "Right " + command.target.x;
                     else if (norm == Vector2.down)
-                        stats = "Down " + Mathf.Abs(move_command.target.y);
+                        stats = "Down " + Mathf.Abs(command.target.y);
                     else if (norm == Vector2.left)
-                        stats = "Left " + Mathf.Abs(move_command.target.x);
+                        stats = "Left " + Mathf.Abs(command.target.x);
                     else
-                        stats = move_command.target.ToString() + " " + move_command.move_type.ToString();
+                        stats = command.target.ToString() + " " + command.move_type.ToString();
                     break;
-                case MovementCommand_Move.MoverTypes.Angle:
-                    if (move_command.offsetAngle == 0)
-                        stats = "Forward " + move_command.maxStep;
-                    else if (move_command.offsetAngle == 90)
-                        stats = "Right " + move_command.maxStep;
-                    else if (move_command.offsetAngle == 180)
-                        stats = "Back " + move_command.maxStep;
-                    else if (move_command.offsetAngle == 270)
-                        stats = "Left " + move_command.maxStep;
+                case MovementCommand.MoverTypes.Angle:
+                    if (command.offsetAngle == 0)
+                        stats = "Forward " + command.maxStep;
+                    else if (command.offsetAngle == 90)
+                        stats = "Right " + command.maxStep;
+                    else if (command.offsetAngle == 180)
+                        stats = "Back " + command.maxStep;
+                    else if (command.offsetAngle == 270)
+                        stats = "Left " + command.maxStep;
                     else
-                        stats =  "Move " + move_command.maxStep + " at " + move_command.offsetAngle + " degrees" ;
+                        stats =  "Move " + command.maxStep + " at " + command.offsetAngle + " degrees" ;
                     break;
                 }
-                if (move_command.withinDistance > 0)
+                if (command.withinDistance > 0)
                     stats = "*" + stats;
-                if (move_command.instant)
+                if (command.instant)
                     stats = "!" + stats;
                 break;
             case MovementCommand.CommandTypes.Wait:
-                stats = ((MovementCommand_Wait)command).time.ToString() + " seconds";
+                stats = command.time.ToString() + " seconds";
                 break;
             case MovementCommand.CommandTypes.Boolean:
-                MovementCommand_Bool boolCommand = (MovementCommand_Bool)command;
-                stats = string.Format("{0} : {1}", boolCommand.flag, boolCommand.Bool);
-                if (boolCommand.flag == MovementCommand_Bool.FlagType.Script)
-                    stats = string.Format("Call Events {0}", boolCommand.Bool ? "A" : "B");
+                stats = string.Format("{0} : {1}", command.flag, command.Bool);
+                // TODO - remove
+                if (command.flag == MovementCommand.FlagType.Script)
+                    stats = string.Format("Call Events {0}", command.Bool ? "A" : "B");
                 break;
             case MovementCommand.CommandTypes.GoTo:
-                stats = "GoTo command " + ((MovementCommand_GOTO)command).gotoId.ToString();
+                stats = "GoTo command " + command.gotoId.ToString();
                 break;
             default:
                 stats = command.command_type.ToString() + " not implemented";
@@ -355,64 +351,63 @@ public class Drawer_Mover : Editor
                 switch (command.command_type) {
                 // Move command
                 case MovementCommand.CommandTypes.Move:
-                    MovementCommand_Move move_command = (MovementCommand_Move)command;
-                    move_command.move_type = (MovementCommand_Move.MoverTypes)EditorGUILayout.EnumPopup(
-                        "", move_command.move_type, GUILayout.Width(135));
+                    command.move_type = (MovementCommand.MoverTypes)EditorGUILayout.EnumPopup(
+                        "", command.move_type, GUILayout.Width(135));
                     // Random choices and values
                     string[] displayText = { "None", "Linear", "Area" };
                     int[] index = { 0, 1, 2 };
                     // Types
-                    switch (move_command.move_type) {
-                    case MovementCommand_Move.MoverTypes.Relative:
-                    case MovementCommand_Move.MoverTypes.Absolute:
-                        move_command.target = EditorGUILayout.Vector2Field("Destination", move_command.target);
+                    switch (command.move_type) {
+                    case MovementCommand.MoverTypes.Relative:
+                    case MovementCommand.MoverTypes.Absolute:
+                        command.target = EditorGUILayout.Vector2Field("Destination", command.target);
                         break;
-                    case MovementCommand_Move.MoverTypes.To_transform:
-                        move_command.transformTarget = EditorGUILayout.ObjectField("Target",
-                                                                              move_command.transformTarget,
+                    case MovementCommand.MoverTypes.To_transform:
+                        command.transformTarget = EditorGUILayout.ObjectField("Target",
+                                                                              command.transformTarget,
                                                                               typeof(Transform), true) as Transform;
-                        move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", move_command.recalculate);
+                        command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", command.recalculate);
                         break;
-                    case MovementCommand_Move.MoverTypes.ObjName:
-                        move_command.targetName = EditorGUILayout.TextField("Target Name", move_command.targetName);
-                        if (move_command.targetName != "") {
-                            GameObject obj = GameObject.Find(move_command.targetName);
+                    case MovementCommand.MoverTypes.ObjName:
+                        command.targetName = EditorGUILayout.TextField("Target Name", command.targetName);
+                        if (command.targetName != "") {
+                            GameObject obj = GameObject.Find(command.targetName);
                             if (obj != null)
-                                move_command.transformTarget = obj.transform;
+                                command.transformTarget = obj.transform;
                         }
-                        move_command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", move_command.recalculate);
+                        command.recalculate = EditorGUILayout.Toggle("Re-adjust Target", command.recalculate);
                         break;
-                    case MovementCommand_Move.MoverTypes.Angle:
+                    case MovementCommand.MoverTypes.Angle:
                         // TODO - angle property field?
                         displayText = new string[] { "None", "Linear" };
                         index = new int[] { 0, 1 };
-                        if (move_command.randomType == MovementCommand_Move.RandomTypes.Area)
-                            move_command.randomType = MovementCommand_Move.RandomTypes.Linear;
+                        if (command.randomType == MovementCommand.RandomTypes.Area)
+                            command.randomType = MovementCommand.RandomTypes.Linear;
                         string[] display = { "Forward", "Right", "Left", "Backwards"};
                         int[] degrees = { 0, 90, -90, 180 };
-                        move_command.offsetAngle = (float)EditorGUILayout.IntPopup("Direction", (int)move_command.offsetAngle, display, degrees);
-                        move_command.offsetAngle = EditorGUILayout.FloatField("Angle", move_command.offsetAngle);
-                        move_command.offsetAngle = Utils.ClampAngle(move_command.offsetAngle, (int)myScript.directions);
-                        move_command.maxStep = EditorGUILayout.FloatField(new GUIContent("Distance", "Distance to move."), move_command.maxStep);
+                        command.offsetAngle = (float)EditorGUILayout.IntPopup("Direction", (int)command.offsetAngle, display, degrees);
+                        command.offsetAngle = EditorGUILayout.FloatField("Angle", command.offsetAngle);
+                        command.offsetAngle = Utils.ClampAngle(command.offsetAngle, (int)myScript.directions);
+                        command.maxStep = EditorGUILayout.FloatField(new GUIContent("Distance", "Distance to move."), command.maxStep);
                         break;
                     default:
                         break;
                     }
                     // Extra Move Command options
-                    if (move_command.move_type != MovementCommand_Move.MoverTypes.Angle)
+                    if (command.move_type != MovementCommand.MoverTypes.Angle)
                     {
-                        move_command.maxStep = Mathf.Max(EditorGUILayout.FloatField(new GUIContent("Max Distance", "Maximum distance to move. 0 = no limit."), move_command.maxStep), 0);
-                        move_command.withinDistance = Mathf.Max(EditorGUILayout.FloatField("Stop Within", move_command.withinDistance), 0);
+                        command.maxStep = Mathf.Max(EditorGUILayout.FloatField(new GUIContent("Max Distance", "Maximum distance to move. 0 = no limit."), command.maxStep), 0);
+                        command.withinDistance = Mathf.Max(EditorGUILayout.FloatField("Stop Within", command.withinDistance), 0);
                         // TODO -  debug and clean this up
-                        move_command.instant = EditorGUILayout.Toggle("Teleport", move_command.instant);
+                        command.instant = EditorGUILayout.Toggle("Teleport", command.instant);
                     }
-                    move_command.randomType = (MovementCommand_Move.RandomTypes)EditorGUILayout.IntPopup(
-                        "Random", (int)move_command.randomType, displayText, index);
+                    command.randomType = (MovementCommand.RandomTypes)EditorGUILayout.IntPopup(
+                        "Random", (int)command.randomType, displayText, index);
 
-                    if (move_command.randomType != MovementCommand_Move.RandomTypes.None)
+                    if (command.randomType != MovementCommand.RandomTypes.None)
                     {
                         EditorGUI.indentLevel = 2;
-                        move_command.random = EditorGUILayout.Vector2Field(new GUIContent("", "Move an extra X to Y from target destination."), move_command.random);
+                        command.random = EditorGUILayout.Vector2Field(new GUIContent("", "Move an extra X to Y from target destination."), command.random);
                         EditorGUI.indentLevel = 1;
                     }
                     
@@ -420,85 +415,81 @@ public class Drawer_Mover : Editor
 
                 // Facing commands
                 case MovementCommand.CommandTypes.Face:
-                    MovementCommand_Face face_command = (MovementCommand_Face)command;
-                    face_command.move_type = (MovementCommand_Move.MoverTypes)EditorGUILayout.EnumPopup(
-                        "", face_command.move_type, GUILayout.Width(135));
+                    command.move_type = (MovementCommand.MoverTypes)EditorGUILayout.EnumPopup(
+                        "", command.move_type, GUILayout.Width(135));
                     // Random choices and values
                     string[] displayTextFace = { "Constant", "Between", "Between and Between" };
                     int[] indexFace = { 0, 1, 2 };
                     // Types
-                    switch (face_command.move_type)
+                    switch (command.move_type)
                     {
-                    case MovementCommand_Move.MoverTypes.Relative:
-                    case MovementCommand_Move.MoverTypes.Absolute:
-                        face_command.target = EditorGUILayout.Vector2Field("Destination", face_command.target);
+                    case MovementCommand.MoverTypes.Relative:
+                    case MovementCommand.MoverTypes.Absolute:
+                        command.target = EditorGUILayout.Vector2Field("Destination", command.target);
                         break;
-                    case MovementCommand_Move.MoverTypes.To_transform:
-                        face_command.transformTarget = EditorGUILayout.ObjectField("Target",
-                                                                              face_command.transformTarget,
+                    case MovementCommand.MoverTypes.To_transform:
+                        command.transformTarget = EditorGUILayout.ObjectField("Target",
+                                                                              command.transformTarget,
                                                                               typeof(Transform), true) as Transform;
                         
                         break;
-                    case MovementCommand_Move.MoverTypes.ObjName:
-                        face_command.targetName = EditorGUILayout.TextField("Target Name", face_command.targetName);
-                        if (face_command.targetName != "")
+                    case MovementCommand.MoverTypes.ObjName:
+                        command.targetName = EditorGUILayout.TextField("Target Name", command.targetName);
+                        if (command.targetName != "")
                         {
-                            GameObject obj = GameObject.Find(face_command.targetName);
+                            GameObject obj = GameObject.Find(command.targetName);
                             if (obj != null)
-                                face_command.transformTarget = obj.transform;
+                                command.transformTarget = obj.transform;
                         }
                         break;
-                    case MovementCommand_Move.MoverTypes.Angle:
+                    case MovementCommand.MoverTypes.Angle:
                         // TODO - angle property field?
                         string[] display = { "Forward", "Right", "Left", "Backwards" };
                         int[] degrees = { 0, 90, -90, 180 };
-                        face_command.offsetAngle = (float)EditorGUILayout.IntPopup("Direction", (int)face_command.offsetAngle, display, degrees);
+                        command.offsetAngle = (float)EditorGUILayout.IntPopup("Direction", (int)command.offsetAngle, display, degrees);
                         break;
                     default:
                         break;
                     }
-                    face_command.maxStep = 1;
-                    face_command.randomType = (MovementCommand_Move.RandomTypes)EditorGUILayout.IntPopup(
-                        "Offset", (int)face_command.randomType, displayTextFace, indexFace);
+                    command.maxStep = 1;
+                    command.randomType = (MovementCommand.RandomTypes)EditorGUILayout.IntPopup(
+                        "Offset", (int)command.randomType, displayTextFace, indexFace);
                     EditorGUI.indentLevel = 2;
-                    if (face_command.randomType == MovementCommand_Move.RandomTypes.None)
+                    if (command.randomType == MovementCommand.RandomTypes.None)
                     {
-                        face_command.offsetAngle = EditorGUILayout.FloatField("Angle", face_command.offsetAngle);
-                        face_command.offsetAngle = Utils.ClampAngle(face_command.offsetAngle, (int)myScript.directions);
-                    } else if (face_command.randomType == MovementCommand_Move.RandomTypes.Linear)
+                        command.offsetAngle = EditorGUILayout.FloatField("Angle", command.offsetAngle);
+                        command.offsetAngle = Utils.ClampAngle(command.offsetAngle, (int)myScript.directions);
+                    } else if (command.randomType == MovementCommand.RandomTypes.Linear)
                     {
-                        face_command.random = EditorGUILayout.Vector2Field(new GUIContent("between", "Choose random offset between X and Y."), face_command.random);
+                        command.random = EditorGUILayout.Vector2Field(new GUIContent("between", "Choose random offset between X and Y."), command.random);
                     }
                     else
                     {
-                        face_command.random = EditorGUILayout.Vector2Field(new GUIContent("between", "Choose random offset between X and Y."), face_command.random);
+                        command.random = EditorGUILayout.Vector2Field(new GUIContent("between", "Choose random offset between X and Y."), command.random);
                         EditorGUI.indentLevel = 3;
                         EditorGUILayout.LabelField("and");
                         EditorGUI.indentLevel = 2;
-                        face_command.random2 = EditorGUILayout.Vector2Field(new GUIContent("between", "Choose random offset between X and Y."), face_command.random2);
+                        command.random2 = EditorGUILayout.Vector2Field(new GUIContent("between", "Choose random offset between X and Y."), command.random2);
                     }
                     EditorGUI.indentLevel = 1;
                     break;
 
                 // Wait Command
                 case MovementCommand.CommandTypes.Wait:
-                    MovementCommand_Wait wait_command = (MovementCommand_Wait)command;
-                    wait_command.time = EditorGUILayout.FloatField("Seconds:", wait_command.time, GUILayout.Width(185));
+                    command.time = EditorGUILayout.FloatField("Seconds:", command.time, GUILayout.Width(185));
                     break;
                 case MovementCommand.CommandTypes.Boolean:
-                    MovementCommand_Bool boolCommand = (MovementCommand_Bool)command;
                     GUILayout.BeginHorizontal();
-                    boolCommand.flag = (MovementCommand_Bool.FlagType)EditorGUILayout.EnumPopup("", boolCommand.flag, GUILayout.Width(135));
-                    if (boolCommand.flag == MovementCommand_Bool.FlagType.Pause)
-                        boolCommand.Bool = true;
+                    command.flag = (MovementCommand.FlagType)EditorGUILayout.EnumPopup("", command.flag, GUILayout.Width(135));
+                    if (command.flag == MovementCommand.FlagType.Pause)
+                        command.Bool = true;
                     else
-                        boolCommand.Bool = EditorGUILayout.Toggle("", boolCommand.Bool);
+                        command.Bool = EditorGUILayout.Toggle("", command.Bool);
                     GUILayout.EndHorizontal();
                     break;
                 case MovementCommand.CommandTypes.GoTo:
-                    MovementCommand_GOTO goto_command = (MovementCommand_GOTO)command;
-                    goto_command.gotoId = EditorGUILayout.IntField("Command:", goto_command.gotoId, GUILayout.Width(185));
-                    goto_command.gotoId = Mathf.Clamp(goto_command.gotoId, 0, myScript.commands.Count - 1);
+                    command.gotoId = EditorGUILayout.IntField("Command:", command.gotoId, GUILayout.Width(185));
+                    command.gotoId = Mathf.Clamp(command.gotoId, 0, myScript.commands.Count - 1);
                     break;
                 default:
                     EditorGUILayout.LabelField("ERROR");
@@ -508,29 +499,6 @@ public class Drawer_Mover : Editor
         }
         EditorGUILayout.EndScrollView();
         EditorGUILayout.Space();
-    }
-
-    void _SwapCommand(MovementCommand.CommandTypes commandType, int index = -1) {
-        if (index >= 0 && index <= myScript.commands.Count)
-            myScript.commands.RemoveAt(index);
-        switch (commandType)
-        {
-        case MovementCommand.CommandTypes.Move:
-            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Move>());
-            break;
-        case MovementCommand.CommandTypes.Face:
-            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Face>());
-            break;
-        case MovementCommand.CommandTypes.Wait:
-            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Wait>());
-            break;
-        case MovementCommand.CommandTypes.Boolean:
-            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_Bool>());
-            break;
-        case MovementCommand.CommandTypes.GoTo:
-            myScript.commands.Insert(index, ScriptableObject.CreateInstance<MovementCommand_GOTO>());
-            break;
-        }
     }
 
 	void _DrawRow(ref int index, int buttons_per_row) {
@@ -653,7 +621,8 @@ public class Drawer_Mover : Editor
 
 	void InsertNewCommand(object data) {
 		int id = System.Convert.ToInt32(data);
-		myScript.commands.Insert(id, ScriptableObject.CreateInstance<MovementCommand_Move>());
+        MovementCommand newCommand = new MovementCommand(MovementCommand.CommandTypes.Move);
+        myScript.commands.Insert(id, newCommand);
 	}
 
     // for move commands so far
@@ -661,8 +630,9 @@ public class Drawer_Mover : Editor
 		int[] args = data as int[];
 		int index = args[0];
 
-        MovementCommand_Move command = ScriptableObject.CreateInstance<MovementCommand_Move>();
-        command.move_type = MovementCommand_Move.MoverTypes.Relative;
+        MovementCommand command = new MovementCommand(MovementCommand.CommandTypes.Move);
+        command.SetMovementCommand(MovementCommand.CommandTypes.Move);
+        command.move_type = MovementCommand.MoverTypes.Relative;
         switch (args[1]) {
 		case 1:	// move up
 			command.target = Vector2.up * masterMover.unitDistance;

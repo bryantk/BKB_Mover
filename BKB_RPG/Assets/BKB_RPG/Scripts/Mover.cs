@@ -210,24 +210,24 @@ namespace BKB_RPG {
             paused = on;
         }
 
-        Vector3 _GetTarget(MovementCommand_Move command) {
+        Vector3 _GetTarget(MovementCommand command) {
             Vector3 result = command.target;
             switch (command.move_type)
             {
-            case MovementCommand_Move.MoverTypes.Absolute:
+            case MovementCommand.MoverTypes.Absolute:
                 //result = command.target;
                 break;
-            case MovementCommand_Move.MoverTypes.Relative:
+            case MovementCommand.MoverTypes.Relative:
                 result = command.target;
                 result += transform.position;
                 break;
-            case MovementCommand_Move.MoverTypes.To_transform:
-            case MovementCommand_Move.MoverTypes.ObjName:
+            case MovementCommand.MoverTypes.To_transform:
+            case MovementCommand.MoverTypes.ObjName:
                 if (command.transformTarget == null)
                     throw new System.Exception(string.Format("Command {0} target not set on object '{1}'", currentNode, name));
                 result = command.transformTarget.position;
                 break;
-            case MovementCommand_Move.MoverTypes.Angle:
+            case MovementCommand.MoverTypes.Angle:
                 float angle = Utils.ClampAngle(command.offsetAngle, (int)directions);
                 float magnitude = command.maxStep;
                 result = Utils.AngleMagnitudeToVector2(facing + angle, magnitude);
@@ -236,20 +236,20 @@ namespace BKB_RPG {
             }
             if (command.random.magnitude > 0)
             {
-                if (command.randomType == MovementCommand_Move.RandomTypes.Linear)
+                if (command.randomType == MovementCommand.RandomTypes.Linear)
                 {
                     Vector3 dir = result - transform.position;
                     dir.z = transform.position.z;
                     result = result + dir.normalized * Random.Range(command.random.x, command.random.y);
                 }
-                else if (command.randomType == MovementCommand_Move.RandomTypes.Area)
+                else if (command.randomType == MovementCommand.RandomTypes.Area)
                 {
                     //TODO deal with random type (random or weighted)
                     result += (Vector3)Utils.RandomAreaByDirection(0, 360, 360 / (int)directions, Random.Range(command.random.x, command.random.y));
                 }
             }
             // Do not excced maxStep distance when moving.
-            if (command.maxStep > 0 && command.move_type != MovementCommand_Move.MoverTypes.Angle)
+            if (command.maxStep > 0 && command.move_type != MovementCommand.MoverTypes.Angle)
             {
                 Vector2 dir = (Vector2)result - (Vector2)transform.position;
                 dir = dir.normalized * command.maxStep;
@@ -263,7 +263,7 @@ namespace BKB_RPG {
         void _MoveCommands() {
             if (!alwaysAnimate)
                 SetAnimation("speed", 0);
-            MovementCommand_Move command = (MovementCommand_Move)commands[currentNode];
+            MovementCommand command = commands[currentNode];
             if (!targetSet)
             {
                 try
@@ -280,11 +280,11 @@ namespace BKB_RPG {
                 if (command.command_type == MovementCommand.CommandTypes.Face)
                 {
                     float random = facing;
-                    if (command.randomType == MovementCommand_Move.RandomTypes.Linear)
+                    if (command.randomType == MovementCommand.RandomTypes.Linear)
                     {
                         random += Random.Range(command.random.x, command.random.y);
                     }
-                    else if (command.randomType == MovementCommand_Move.RandomTypes.Area)
+                    else if (command.randomType == MovementCommand.RandomTypes.Area)
                     {
                         if (Random.value >= 0.5f)
                             random += Random.Range(command.random.x, command.random.y);
@@ -314,42 +314,42 @@ namespace BKB_RPG {
         }
 
         void _BoolCommands() {
-            MovementCommand_Bool command = (MovementCommand_Bool)commands[currentNode];
+            MovementCommand command = commands[currentNode];
             switch (command.flag)
             {
-            case MovementCommand_Bool.FlagType.Clip:
-            case MovementCommand_Bool.FlagType.ClipAll:
+            case MovementCommand.FlagType.Clip:
+            case MovementCommand.FlagType.ClipAll:
                 // TODO - 
                 // Disable collider
                 // turn on bool / set value for Move() to ignore collisions
                 // Clip = dont hit entities, but do hit World
                 // ClipAll = clip all
                 break;
-            case MovementCommand_Bool.FlagType.IgnoreImpossible:
+            case MovementCommand.FlagType.IgnoreImpossible:
                 ignore_impossible = command.Bool;
                 break;
-            case MovementCommand_Bool.FlagType.AlwaysAnimate:
+            case MovementCommand.FlagType.AlwaysAnimate:
                 alwaysAnimate = command.Bool;
                 if (alwaysAnimate)
                     SetAnimation("speed", animation_rate);
                 else
                     SetAnimation("speed", 0);
                 break;
-            case MovementCommand_Bool.FlagType.Invisible:
+            case MovementCommand.FlagType.Invisible:
                 if (render != null)
                     render.enabled = !command.Bool;
                 break;
-            case MovementCommand_Bool.FlagType.LockFacing:
+            case MovementCommand.FlagType.LockFacing:
                 lockFacing = command.Bool;
                 break;
-            case MovementCommand_Bool.FlagType.Reverse:
+            case MovementCommand.FlagType.Reverse:
                 reverse = command.Bool;
                 break;
             // TODO - call IPauseable... also, this command is destructive... (no way for self to recover)
-            case MovementCommand_Bool.FlagType.Pause:
+            case MovementCommand.FlagType.Pause:
                 Pause = command.Bool;
                 break;
-            case MovementCommand_Bool.FlagType.Script:
+            case MovementCommand.FlagType.Script:
                 if (command.Bool)
                 {
                     if (eventA != null)
@@ -368,28 +368,28 @@ namespace BKB_RPG {
         public void Tick() {
 			if (Pause || commands.Count == 0)
 				return;
-            
-            var command_type = commands[currentNode].GetType();
-            if (command_type == typeof(MovementCommand_Wait))
+
+            MovementCommand.CommandTypes command_type = commands[currentNode].command_type;
+            if (command_type == MovementCommand.CommandTypes.Wait)
             {
                 waitTime += Time.deltaTime;
-                if (waitTime >= ((MovementCommand_Wait)commands[currentNode]).time)
+                if (waitTime >= commands[currentNode].time)
                     NextNode();
             }
-            else if (command_type == typeof(MovementCommand_Move) || command_type == typeof(MovementCommand_Face))
+            else if (command_type == MovementCommand.CommandTypes.Move || command_type == MovementCommand.CommandTypes.Face)
             {
                 _MoveCommands();
             }
-            else if (command_type == typeof(MovementCommand_Bool))
+            else if (command_type == MovementCommand.CommandTypes.Boolean)
             {
                 _BoolCommands();
                 // This command is a NoOp
                 NextNode();
                 Tick();
             }
-            else if (command_type == typeof(MovementCommand_GOTO))
+            else if (command_type == MovementCommand.CommandTypes.GoTo)
             {
-                currentNode = ((MovementCommand_GOTO)commands[currentNode]).gotoId;
+                currentNode = commands[currentNode].gotoId;
                 // This command is a NoOp
                 Tick();
             }
