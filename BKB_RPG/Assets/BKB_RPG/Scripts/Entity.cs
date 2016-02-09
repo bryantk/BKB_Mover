@@ -3,7 +3,7 @@ using UnityEngine.Events;
 using System.Collections;
 
 namespace BKB_RPG {
-    public class Entity : MonoBehaviour {
+    public class Entity : MonoBehaviour, IPauseable {
 
         public delegate void NullDelegate();
         NullDelegate tickDelegate;
@@ -12,6 +12,7 @@ namespace BKB_RPG {
         float _next;
         public UnityEvent onCollision;
 
+        public bool Paused;
 
         private Mover bkb_mover;
 
@@ -31,6 +32,18 @@ namespace BKB_RPG {
         public void Tick() {
             if (tickDelegate != null)
                 tickDelegate();
+        }
+
+        public void iPause() {
+            Paused = true;
+            if (bkb_mover != null)
+                bkb_mover.iPause();
+        }
+
+        public void iResume() {
+            Paused = false;
+            if (bkb_mover != null)
+                bkb_mover.iResume();
         }
 
         public void OnCollision(Transform hit) {

@@ -13,6 +13,7 @@ public class Drawer_Mover : Editor
     // settings
     GUIStyle style;
     float buttonWidth = 80;
+    MovementCommand toCopy;
 
 
     void OnEnable() {
@@ -35,23 +36,6 @@ public class Drawer_Mover : Editor
             Debug.LogWarning("Created command list");
             myScript.commands = new List<MovementCommand>();
         }
-        // Check if InstanceID changed, if so deep copy Command List
-        int id = myScript.GetInstanceID();
-        if (myScript.myID != id)
-        {
-            myScript.myID = id;
-            //DeepCloneCommands();
-        }
-    }
-
-
-    void DeepCloneCommands() {
-        List<MovementCommand> commands = new List<MovementCommand>();
-        foreach (MovementCommand c in myScript.commands)
-        {
-            //commands.Add(ScriptableObject.Instantiate(c));
-        }
-        myScript.commands = commands;
     }
 
 
@@ -68,12 +52,12 @@ public class Drawer_Mover : Editor
             // --- Command Switch -----------------------------------------------
 
             MovementCommand command = myScript.commands[i];
-            if (command.command_type == MovementCommand.CommandTypes.Wait)
+            if (command.commandType == MovementCommand.CommandTypes.Wait)
             {
                 Handles.Label(lastPos + textOffset, i.ToString() + " : Wait: " + command.time.ToString(), style);
                 textOffset += offsetAmount;
             }
-            else if (command.command_type == MovementCommand.CommandTypes.Move || command.command_type == MovementCommand.CommandTypes.Face)
+            else if (command.commandType == MovementCommand.CommandTypes.Move || command.commandType == MovementCommand.CommandTypes.Face)
             {
                 // Reset Text Offset
                 textOffset = Vector3.right * 0.15f + Vector3.down * 0.1f;
@@ -125,7 +109,7 @@ public class Drawer_Mover : Editor
                 {
                     // Within Distance.
                     Vector3 withinRadius = lastPos + new Vector3(command.withinDistance, 0, 0);
-                    Vector3 withinSlider = Handles.Slider(withinRadius, Vector3.right, 0.75f, Handles.ArrowCap, 1);
+                    Vector3 withinSlider = Handles.Slider(withinRadius, Vector3.right, 0.5f, Handles.ArrowCap, 1);
                     command.withinDistance = Mathf.Max((withinSlider - lastPos).x, 0);
                     if (command.withinDistance > 0)
                     {
@@ -167,17 +151,35 @@ public class Drawer_Mover : Editor
                 Handles.Label(lastPos + textOffset, i.ToString() + " : Move", style);
                 textOffset += offsetAmount;
             }
-            else if (command.command_type == MovementCommand.CommandTypes.GoTo)
+            else if (command.commandType == MovementCommand.CommandTypes.GoTo)
             {
                 Handles.Label(lastPos + textOffset, i.ToString() + ": GOTO: " + command.gotoId, style);
                 textOffset += offsetAmount;
             }
-            else if (command.command_type == MovementCommand.CommandTypes.Boolean)
+            else if (command.commandType == MovementCommand.CommandTypes.Boolean)
             {
                 Handles.Label(lastPos + textOffset, i.ToString() + ": Bool", style);
                 textOffset += offsetAmount;
             }
-		}
+            else if (command.commandType == MovementCommand.CommandTypes.Script)
+            {
+                Handles.Label(lastPos + textOffset, i.ToString() + ": Script", style);
+                textOffset += offsetAmount;
+            }
+            else if (command.commandType == MovementCommand.CommandTypes.Remove)
+            {
+                Handles.Label(lastPos + textOffset, i.ToString() + ": Pop" + command.gotoId, style);
+                textOffset += offsetAmount;
+            }
+            else if (command.commandType == MovementCommand.CommandTypes.Set)
+            {
+                Handles.Label(lastPos + textOffset, i.ToString() + ": Set " + command.setType.ToString(), style);
+                textOffset += offsetAmount;
+            }
+            // ----------------------------------
+            // NEW COMMAND SCENE DISPLAY LOGIC
+            // ----------------------------------
+        }
         Repaint();
     }
 
@@ -224,7 +226,7 @@ public class Drawer_Mover : Editor
         myScript.showOptions = EditorGUILayout.Foldout(myScript.showOptions, "Advanced");
         if (myScript.showOptions)
         {
-            myScript.Pause = EditorGUILayout.Toggle("Paused", myScript.Pause);
+            myScript.compelete = EditorGUILayout.Toggle("Paused", myScript.compelete);
             EditorGUILayout.PropertyField(serializedObject.FindProperty("advanceDebugDraw"),
                 new GUIContent("Advacned Debug", "Show advanced options in inspector GUI."));
             EditorGUILayout.LabelField("Collision Settings:");
@@ -239,15 +241,7 @@ public class Drawer_Mover : Editor
                 EditorGUILayout.IntSlider("Ray Count", serializedObject.FindProperty("ray_density").intValue, 1, 5);
             EditorGUI.indentLevel = 1;
         }
-        // Script options
-        myScript.showScripts = EditorGUILayout.Foldout(myScript.showScripts, "Script Calls");
-        if (myScript.showScripts)
-        {
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("onStart"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("onComplete"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("eventA"));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("eventB"));
-        }
+
     }
 
     void DrawCommands() {
@@ -272,15 +266,15 @@ public class Drawer_Mover : Editor
             GUI.Label(new Rect(45, rt.y, 18, 18), "?");
             myContextMenu(new Rect(43, rt.y, 15, 15), 1, i);
             MovementCommand.CommandTypes commandType = (MovementCommand.CommandTypes)EditorGUILayout.EnumPopup(
-                "", command.command_type, GUILayout.Width(75));
+                "", command.commandType, GUILayout.Width(75));
             // if user changed command type, show options
-            if (commandType != command.command_type) {
+            if (commandType != command.commandType) {
                 myScript.commands[i].SetMovementCommand(commandType);
                 return;
             }
             // Show quick info of command
             string stats = "";
-            switch (command.command_type) {
+            switch (command.commandType) {
             case MovementCommand.CommandTypes.Move:
             case MovementCommand.CommandTypes.Face:
                 switch (command.move_type) {
@@ -336,8 +330,20 @@ public class Drawer_Mover : Editor
             case MovementCommand.CommandTypes.GoTo:
                 stats = "GoTo command " + command.gotoId.ToString();
                 break;
+            case MovementCommand.CommandTypes.Script:
+                stats = "Call scripts: " + command.scriptCalls.GetPersistentEventCount();
+                break;
+            case MovementCommand.CommandTypes.Remove:
+                stats = "Remove " + command.gotoId + " commands";
+                break;
+            case MovementCommand.CommandTypes.Set:
+                stats = "Set " + command.setType.ToString() + " - " + command.gotoId.ToString();
+                break;
+            // ----------------------------------
+            // COMMAND QUICK VIEW
+            // ----------------------------------
             default:
-                stats = command.command_type.ToString() + " not implemented";
+                stats = command.commandType.ToString() + " not implemented";
                 break;
             }
             EditorGUILayout.LabelField(stats, GUILayout.Width(175));
@@ -348,7 +354,7 @@ public class Drawer_Mover : Editor
                 // C O M M A N D   E D I T I N G
                 //------------------------------------------------------------------------------------------------------
                 // TODO - move all names/tooltips to definitions file?
-                switch (command.command_type) {
+                switch (command.commandType) {
                 // Move command
                 case MovementCommand.CommandTypes.Move:
                     command.move_type = (MovementCommand.MoverTypes)EditorGUILayout.EnumPopup(
@@ -491,6 +497,32 @@ public class Drawer_Mover : Editor
                     command.gotoId = EditorGUILayout.IntField("Command:", command.gotoId, GUILayout.Width(185));
                     command.gotoId = Mathf.Clamp(command.gotoId, 0, myScript.commands.Count - 1);
                     break;
+                case MovementCommand.CommandTypes.Script:
+                    EditorGUILayout.PropertyField(serializedObject.FindProperty("commands").GetArrayElementAtIndex(i).FindPropertyRelative("scriptCalls"));
+                    break;
+                case MovementCommand.CommandTypes.Remove:
+                    EditorGUILayout.PropertyField(serializedObject.FindProperty("commands").GetArrayElementAtIndex(i).FindPropertyRelative("gotoId"),
+                        new GUIContent("Remove:"));
+                    command.gotoId = Mathf.Clamp(command.gotoId, 0, i);
+                    EditorGUILayout.PropertyField(serializedObject.FindProperty("commands").GetArrayElementAtIndex(i).FindPropertyRelative("Bool"),
+                        new GUIContent("Remove Self"));
+                    break;
+                case MovementCommand.CommandTypes.Set:
+                    command.setType = (MovementCommand.SetTypes)EditorGUILayout.EnumPopup(
+                        "", command.setType, GUILayout.Width(135));
+                    string[] displays = System.Enum.GetNames(typeof(Mover.Speed));
+                    int[] values = { 5, 15, 30, 50, 100, 200 };
+                    string text = "Speed";
+                    if (command.setType == MovementCommand.SetTypes.Animation)
+                    {
+                        displays = System.Enum.GetNames(typeof(Mover.aSpeed));
+                        values = new int[] { 0, 5, 10, 20, 30, 40 };
+                    }
+                    command.gotoId = EditorGUILayout.IntPopup(text, command.gotoId, displays, values, GUILayout.Width(220));
+                    break;
+                // ----------------------------------
+                // NEW COMMAND DISPLAY LOGIC HERE
+                // ----------------------------------
                 default:
                     EditorGUILayout.LabelField("ERROR");
                     break;
@@ -571,7 +603,16 @@ public class Drawer_Mover : Editor
 
 				menu.AddItem (new GUIContent ("Insert/Above"), false, InsertNewCommand, (id));
 				menu.AddItem (new GUIContent ("Insert/Below"), false, InsertNewCommand, (id+1));
-				menu.AddSeparator ("");
+
+                menu.AddItem(new GUIContent("Copy"), false, Copy, (id));
+                if (toCopy == null)
+                    menu.AddItem(new GUIContent("Paste"), true, Paste, (id));
+                else
+                {
+                    menu.AddItem(new GUIContent("Paste/Above"), false, Paste, (id));
+                    menu.AddItem(new GUIContent("Paste/Below"), false, Paste, (id+1));
+                }
+                menu.AddSeparator ("");
 				menu.AddItem (new GUIContent ("Set To/Move/Up"), false, QuickCommand, new int[2] {id, 1});
 				menu.AddItem (new GUIContent ("Set To/Move/Right"), false, QuickCommand, new int[2] {id, 2});
 				menu.AddItem (new GUIContent ("Set To/Move/Down"), false, QuickCommand, new int[2] {id, 3});
@@ -596,6 +637,16 @@ public class Drawer_Mover : Editor
 	void ClearAll() {
 		myScript.commands = new List<MovementCommand>();
 	}
+
+    void Copy(object data) {
+        int id = System.Convert.ToInt32(data);
+        toCopy = myScript.commands[id];
+    }
+
+    void Paste(object data) {
+        int id = System.Convert.ToInt32(data);
+        myScript.commands.Insert(id, toCopy.Copy());
+    }
 
 	void RemoveAt(object data) {
 		int id = System.Convert.ToInt32(data);

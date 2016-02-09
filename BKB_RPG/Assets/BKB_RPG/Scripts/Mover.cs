@@ -1,13 +1,16 @@
 ﻿using UnityEngine;
-using UnityEngine.Events;
 using UnityEditor;
 using System.Collections.Generic;
+
+
+// TODO
+// System.Action callback=null
 
 namespace BKB_RPG {
     [RequireComponent(typeof(Entity))]
 	[RequireComponent(typeof(CircleCollider2D))]
     [System.Serializable]
-	public class Mover : MonoBehaviour {
+	public class Mover : MonoBehaviour, IPauseable, ISavable {
         // enum definitions.
 		public enum RepeatBehavior{None, PingPong, Loop, ResetAndLoop}; 
 		public enum Speed{Slowest=5, Slower=15, Slow=30, Normal=50, Faster=100, Fastest=200}
@@ -33,29 +36,30 @@ namespace BKB_RPG {
         public int currentNode;
         public float facing;
 
-        public bool showScripts = true;
-        public UnityEvent onStart = new UnityEvent();
-        public UnityEvent onComplete = new UnityEvent();
-        public UnityEvent eventA = new UnityEvent();
-        public UnityEvent eventB = new UnityEvent();
-
         #region Movement Options
         // % spread of raycasts. 1 = flush with collider radius.
+        [System.NonSerialized]
         public float spread = 0.75f;
         // % of speed to look ahead for obstacles and stop. 2 = objects 2x speed ahead will caus collision
-		public float stop_range = 2;
+        [System.NonSerialized]
+        public float stop_range = 2;
         // Radius of 'collider'. May be larger or smaller than acctual collider (for sliping into tight spots and what not).
         // Defaults to circle collider radius.
-		public float radius = 0;
+        [System.NonSerialized]
+        public float radius = 0;
         // Number of rays to cast for collisions. Starts with '1' in the center, then adds more to each side.
         // More rays yields more percise checking and is a must for larger colliders
-		public int ray_density = 2;
+        [System.NonSerialized]
+        public int ray_density = 2;
         // When encountering an obstacle, should this mover attempt to 'slide' and keep moving?
-		public bool slide = false;
+        [System.NonSerialized]
+        public bool slide = false;
         // Looping through commands ++ or --?
-		public bool reverse = false;
+        [System.NonSerialized]
+        public bool reverse = false;
         // When true, current move command will exit upon reaching an impossible to move scenario. 
-		public bool ignore_impossible = false;
+        [System.NonSerialized]
+        public bool ignore_impossible = false;
         #endregion
 
         // Facing will not be modified unless false.
@@ -73,39 +77,67 @@ namespace BKB_RPG {
         float waitTime = 0;
 
         // Movement Command helpers
+        [SerializeField]
         bool targetSet = false;
+        [SerializeField]
         Vector3 target;
         float nearestPixel = 0;
 
         #region Inspector Drawer Options
+        [System.NonSerialized]
         public Vector3 startPosition = Vector3.zero;
+        [System.NonSerialized]
         public Vector2 scrollPos;
+        [System.NonSerialized]
         public bool showSettings;
+        [System.NonSerialized]
         public bool showOptions;
+        [System.NonSerialized]
         public bool showQuickCommands = false;
+        [System.NonSerialized]
         public bool advanceDebugDraw = true;
         #endregion
 
-        // TODO - correct pasue implementation. Use Ipausaable
-        bool paused = false;
-        public bool Pause {
-            get { return paused; }
-            set {
-                _Pause(value);
-            }
-        }
+        // for pausing
+        public bool compelete = false;
+        bool pause = false;
 
+        // Used to save last location of mover
+        public Vector3 savePosition;
         #region References for speedy lookups
         Animator anim;
         Renderer render;
         #endregion
-        public int myID = 0;
 
+
+        public void iPause() {
+            pause = true;
+            SetAnimation("speed", 0);
+        }
+
+        public void iResume() {
+            pause = false;
+            SetAnimation("speed", animation_rate);
+        }
+
+        public string iSave() {
+            savePosition = transform.position;
+            return JsonUtility.ToJson(this);
+        }
+
+        public void iLoad(string json) {
+            JsonUtility.FromJsonOverwrite(json, this);
+            transform.position = savePosition;
+        }
+
+
+        void OnComplete() {
+            print("movment completed");
+            compelete = true;
+        }
 
 		public void Setup(Entity entity) {
             this.entity = entity;
-            if (reverse && repeat == RepeatBehavior.None)
-				Pause = true;
 			startPosition = transform.position;
 			if (radius == 0)
 				radius = GetComponent<CircleCollider2D>().radius;
@@ -124,13 +156,6 @@ namespace BKB_RPG {
 
             currentNode = -1;
             NextNode();
-            if (onStart != null)
-                onStart.Invoke();
-        }
-
-        // Call on self 'onComplete' to only run once.
-        public void RunOnCompleteScriptsOnce() {
-            onComplete = new UnityEvent();
         }
 
         // TODO - Refacter into less
@@ -140,8 +165,6 @@ namespace BKB_RPG {
             currentNode += (reverse ? -1 : 1);
 			if (currentNode >= commands.Count)
             {
-                if (onComplete != null)
-                    onComplete.Invoke();
 				switch (repeat) {
 				case RepeatBehavior.PingPong:
 					reverse = true;
@@ -155,8 +178,8 @@ namespace BKB_RPG {
 					currentNode = 0;
 					break;
 				default:
-					Pause = true;
-					break;
+                    OnComplete();
+                    break;
 				}
 			} else if (currentNode < 0) {
 				if (!reverse)
@@ -174,8 +197,8 @@ namespace BKB_RPG {
 					currentNode = commands.Count-1;
 					break;
 				default:
-					Pause = true;
-					break;
+                    OnComplete();
+                    break;
 				}
 			}
 		}
@@ -203,12 +226,6 @@ namespace BKB_RPG {
             anim.SetBool(name, value);
         }
 
-        // TODO - use IPausable... not this
-        void _Pause(bool on) {
-            if (paused == on)
-                return;
-            paused = on;
-        }
 
         Vector3 _GetTarget(MovementCommand command) {
             Vector3 result = command.target;
@@ -277,7 +294,7 @@ namespace BKB_RPG {
                     return;
                 }
                 // if facing command, modify target
-                if (command.command_type == MovementCommand.CommandTypes.Face)
+                if (command.commandType == MovementCommand.CommandTypes.Face)
                 {
                     float random = facing;
                     if (command.randomType == MovementCommand.RandomTypes.Linear)
@@ -347,29 +364,17 @@ namespace BKB_RPG {
                 break;
             // TODO - call IPauseable... also, this command is destructive... (no way for self to recover)
             case MovementCommand.FlagType.Pause:
-                Pause = command.Bool;
-                break;
-            case MovementCommand.FlagType.Script:
-                if (command.Bool)
-                {
-                    if (eventA != null)
-                        eventA.Invoke();
-                }
-                else
-                {
-                    if (eventB != null)
-                        eventB.Invoke();
-                }
+                compelete = command.Bool;
                 break;
             }
         }
 
 
         public void Tick() {
-			if (Pause || commands.Count == 0)
+			if (compelete || pause|| commands.Count == 0)
 				return;
 
-            MovementCommand.CommandTypes command_type = commands[currentNode].command_type;
+            MovementCommand.CommandTypes command_type = commands[currentNode].commandType;
             if (command_type == MovementCommand.CommandTypes.Wait)
             {
                 waitTime += Time.deltaTime;
@@ -393,6 +398,37 @@ namespace BKB_RPG {
                 // This command is a NoOp
                 Tick();
             }
+            else if (command_type == MovementCommand.CommandTypes.Script)
+            {
+                commands[currentNode].scriptCalls.Invoke();
+                // This command is a NoOp
+                NextNode();
+                Tick();
+            }
+            else if (command_type == MovementCommand.CommandTypes.Remove)
+            {
+                int start = Mathf.Max(currentNode - commands[currentNode].gotoId, 0);
+                int remove = commands[currentNode].Bool ? 1 : 0;
+                int range = Mathf.Min(commands[currentNode].gotoId + remove, commands.Count);
+                commands.RemoveRange(start, range);
+                currentNode = start - remove;
+                // This command is a NoOp
+                NextNode();
+                Tick();
+            }
+            else if (command_type == MovementCommand.CommandTypes.Set)
+            {
+                if (commands[currentNode].setType == MovementCommand.SetTypes.Speed)
+                    move_speed = (Speed)commands[currentNode].gotoId;
+                else
+                    animation_speed = (aSpeed)commands[currentNode].gotoId;
+                // This command is a NoOp
+                NextNode();
+                Tick();
+            }
+            // ---------------------------------------------
+            // DEFINE COMMAND LOGIC HERE
+            // ---------------------------------------------
             else
             {
                 Debug.LogWarning("Unknown command type: " + command_type.ToString());
@@ -401,7 +437,7 @@ namespace BKB_RPG {
 
         // private?
         public int StepTowards(Vector3 target, float stopWithin = 0f, bool trySlide=true) {
-			Vector2 dir = target - transform.position;
+            Vector2 dir = target - transform.position;
 			// within destination?
 			if (dir.magnitude <= Mathf.Max(speed, Mathf.Max(nearestPixel, stopWithin))) {
                 if (stopWithin == 0)

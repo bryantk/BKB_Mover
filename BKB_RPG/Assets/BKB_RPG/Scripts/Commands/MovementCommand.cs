@@ -1,12 +1,13 @@
 ﻿using UnityEngine;
+using UnityEngine.Events;
 
 namespace BKB_RPG {
 	[System.Serializable]
 	public class MovementCommand {
 
-		public enum CommandTypes { Move, Face, Wait, GoTo, Boolean, Script};
+		public enum CommandTypes { Move, Face, Wait, GoTo, Boolean, Script, Remove, Set};
         // What kind of command is this?
-		public CommandTypes command_type;
+		public CommandTypes commandType;
         // Show detailed information in inespector?
         public bool expandedInspector;
 
@@ -14,13 +15,20 @@ namespace BKB_RPG {
         public enum FlagType { LockFacing, AlwaysAnimate, Clip, ClipAll, Invisible, IgnoreImpossible, Reverse, Pause, Script };
         // What kind of bool command.
         public FlagType flag;
-        public bool Bool;
+        public bool Bool;   // and Remove
 
         // WAIT
         public float time;
 
-        // GOTO
+        // GOTO / REMOVE / SET
         public int gotoId;
+
+        // SET
+        public enum SetTypes { Speed, Animation };
+        public SetTypes setType;
+
+        // SCRIPT
+        public UnityEvent scriptCalls;
 
         // MOVE
         public enum MoverTypes { Relative, Angle, Absolute, To_transform, ObjName };
@@ -67,12 +75,27 @@ namespace BKB_RPG {
             case CommandTypes.Face:
                 FaceCommand();
                 break;
+            case CommandTypes.Script:
+                ScriptCommand();
+                break;
+            case CommandTypes.Remove:
+                RemoveCommand();
+                break;
+            case CommandTypes.Set:
+                SetCommand();
+                break;
             case CommandTypes.Move:
             default:
                 MoveCommand();
                 break;
             }
         }
+
+
+        public MovementCommand Copy() {
+            return (MovementCommand)this.MemberwiseClone();
+        }
+
 
         public void SetMovementCommand(CommandTypes type = CommandTypes.Move) {
             expandedInspector = true;
@@ -90,6 +113,15 @@ namespace BKB_RPG {
             case CommandTypes.Face:
                 FaceCommand();
                 break;
+            case CommandTypes.Script:
+                ScriptCommand();
+                break;
+            case CommandTypes.Remove:
+                RemoveCommand();
+                break;
+            case CommandTypes.Set:
+                SetCommand();
+                break;
             case CommandTypes.Move:
             default:
                 MoveCommand();
@@ -98,26 +130,36 @@ namespace BKB_RPG {
         }
 
         public void BoolCommand() {
-            command_type = CommandTypes.Boolean;
+            commandType = CommandTypes.Boolean;
             Bool = false;
             flag = FlagType.LockFacing;
         }
         
 
         public void WaitCommand() {
-            command_type = CommandTypes.Wait;
+            commandType = CommandTypes.Wait;
             time = 1;
         }
 
 
         public void GoToCommand() {
-            command_type = CommandTypes.GoTo;
+            commandType = CommandTypes.GoTo;
             gotoId = 0;
         }
 
-        
+        public void RemoveCommand() {
+            commandType = CommandTypes.Remove;
+            Bool = false;
+            gotoId = 1;
+        }
+
+        public void ScriptCommand() {
+            commandType = CommandTypes.Script;
+            scriptCalls = new UnityEvent();
+        }
+
         public void MoveCommand() {
-            command_type = CommandTypes.Move;
+            commandType = CommandTypes.Move;
             move_type = MoverTypes.Relative;
             randomType = RandomTypes.None;
             random = Vector2.zero;
@@ -132,7 +174,13 @@ namespace BKB_RPG {
 
         public void FaceCommand() {
             MoveCommand();
-            command_type = CommandTypes.Face;
+            commandType = CommandTypes.Face;
+        }
+
+        public void SetCommand() {
+            commandType = CommandTypes.Set;
+            gotoId = 0;
+            setType = SetTypes.Animation;
         }
 
     }
