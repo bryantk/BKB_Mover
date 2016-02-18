@@ -20,8 +20,10 @@ public class PlayerMover : MonoBehaviour {
 	// Update is called once per frame
 	void Update () {
 		Vector2 dir = new Vector2(Input.GetAxisRaw("Horizontal") * speed, Input.GetAxisRaw("Vertical") * speed);
+        myMovement.moving = false;
         if (dir.magnitude == 0 || myMovement == null)
             return;
+        myMovement.moving = true;
         myMovement.SetFacing(BKB_RPG.Utils.Vector2toAngle(dir));
         myMovement.StepTowards((Vector3)dir.normalized + transform.position);
 		//myRigidbody.velocity = dir;

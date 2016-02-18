@@ -129,5 +129,16 @@ namespace BKB_RPG {
             }
         }
 
+        public static float TouchedAt(float myFacing, float targetFacing) {
+            float diff = targetFacing - myFacing;
+            if (diff < 0)
+                diff = 360 + diff;
+            // 0 = Back
+            // 90 = Right Side
+            // 180 = Front
+            // 270 = Left side
+            return diff % 360;
+        }
+
     }
 }

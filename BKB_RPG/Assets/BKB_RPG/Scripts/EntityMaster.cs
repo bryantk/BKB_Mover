@@ -9,7 +9,6 @@ namespace BKB_RPG {
         public dirs directions = dirs.Free;
         public float unitDistance = 1f;
 
-        public GameObject player;
         private Entity playerEntity;
 
         private Entity[] entities;
@@ -41,19 +40,15 @@ namespace BKB_RPG {
             foreach (Entity entity in entities)
             {
                 entity.Setup();
-                if (entity.gameObject.tag == "Player")
-                {
-                    player = entity.gameObject;
-                    playerEntity = entity;
-                }
             }
+            playerEntity = FindObjectOfType<Player>();
         }
 
 
 
         // Use this for initialization
         void Start() {
-            StartCoroutine(ts());
+
         }
 
         // Update is called once per frame
@@ -65,20 +60,8 @@ namespace BKB_RPG {
         }
 
 
-        IEnumerator ts() {
-            print("start");
-            yield return new WaitForSeconds(2);
-            print("pause");
-            PauseAll();
-            yield return new WaitForSeconds(2);
-            print("player");
-            ResumePlayer();
-            yield return new WaitForSeconds(5);
-            print("all");
-            ResumeAll();
-        }
 
-
+        #region Pause + Resume
         public void PauseAll() {
             PauseNPC();
             PausePlayer();
@@ -115,6 +98,6 @@ namespace BKB_RPG {
         public void ResumePlayer() {
             playerEntity.iResume();
         }
-
+        #endregion
     }
 }

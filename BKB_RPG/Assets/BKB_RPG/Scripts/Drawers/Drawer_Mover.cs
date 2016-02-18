@@ -13,6 +13,7 @@ public class Drawer_Mover : Editor
     // settings
     GUIStyle style;
     float buttonWidth = 80;
+    string json;
     MovementCommand toCopy;
 
 
@@ -21,6 +22,10 @@ public class Drawer_Mover : Editor
         style = new GUIStyle();
         style.normal.textColor = Color.white;
         style.fontSize = 8;
+
+        Rigidbody2D r = myScript.GetComponent<Rigidbody2D>();
+        r.isKinematic = true;
+        r.gravityScale = 0;
 
         int master_count = FindObjectsOfType<EntityMaster>().Length;
 		if (master_count == 0) {
@@ -207,6 +212,12 @@ public class Drawer_Mover : Editor
         EditorGUILayout.PropertyField(serializedObject.FindProperty("facing"),
             new GUIContent("Facing Angle", "0 is up/north, 90 is right/east"));
         EditorGUI.indentLevel = 1;
+
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("moving"),
+            new GUIContent("Moving", "0 is up/north, 90 is right/east"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("movementAngle"),
+            new GUIContent("Moving", "0 is up/north, 90 is right/east"));
+
         myScript.showSettings = EditorGUILayout.Foldout(myScript.showSettings, "Options");
         if (myScript.showSettings)
         {
@@ -221,6 +232,9 @@ public class Drawer_Mover : Editor
             EditorGUILayout.PropertyField(serializedObject.FindProperty("ignore_impossible"),
                 new GUIContent("Skip Impossible", "On impossible move commands, advance to next command."));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("slide"), new GUIContent("Slide on hit?"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("affectedBySlope"),
+                new GUIContent("Affected by Slope", "Slope areas will affect this mover?"));
+
         }
         // Advanced Options
         myScript.showOptions = EditorGUILayout.Foldout(myScript.showOptions, "Advanced");
@@ -239,9 +253,39 @@ public class Drawer_Mover : Editor
                 EditorGUILayout.Slider("Radius", serializedObject.FindProperty("radius").floatValue, 0, 10);
             serializedObject.FindProperty("ray_density").intValue =
                 EditorGUILayout.IntSlider("Ray Count", serializedObject.FindProperty("ray_density").intValue, 1, 5);
+
+            EditorGUILayout.Separator();
+            EditorGUILayout.LabelField("JSON");
+            json = EditorGUILayout.TextArea(json, GUILayout.Height(24), GUILayout.Width(300));
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("To JSON", GUILayout.Width(120)))
+            {
+                json = myScript.iSave();
+                // Remove stored position
+                int start = json.IndexOf(", \"savePosition\":");
+                int end = json.IndexOf("}", start);
+                json = json.Remove(start, end-start+1);
+                // copy to clipboard
+                TextEditor te = new TextEditor();
+                te.text = json;
+                te.SelectAll();
+                te.Copy(); 
+            }
+            if (GUILayout.Button("From JSON", GUILayout.Width(120)) && json.Length > 200)
+            {
+                if (EditorUtility.DisplayDialog("Are you sure?", "Load from given JSON string?", "Yes", "No"))
+                {
+                    try { myScript.iLoad(json); }
+                    catch (System.ArgumentException)
+                    {
+                        Debug.LogError("Corrupt JSON: " + json);
+                    }
+                }
+            }
+            EditorGUILayout.EndHorizontal();
             EditorGUI.indentLevel = 1;
         }
-
+        
     }
 
     void DrawCommands() {
@@ -249,7 +293,7 @@ public class Drawer_Mover : Editor
         GUILayout.Box("", new GUILayoutOption[] { GUILayout.ExpandWidth(true), GUILayout.Height(1) });
         GUILayout.Label("Commands", EditorStyles.boldLabel);
         float y = GUILayoutUtility.GetLastRect().y;
-        GUI.Label(new Rect(176, y, 70, 15), "Current: " + myScript.currentNode.ToString());
+        GUI.Label(new Rect(176, y, 70, 15), "Current: " + myScript.currentCommandIndex.ToString());
         GUI.Box(new Rect(105, y, 15, 15), "");
         GUI.Label(new Rect(107, y, 18, 18), "?");
         myContextMenu(new Rect(105, y, 25, 25), 0, myScript.commands.Count, true);
