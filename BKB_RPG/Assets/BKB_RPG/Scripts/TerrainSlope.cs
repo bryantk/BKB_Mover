@@ -14,8 +14,6 @@ public class TerrainSlope : MonoBehaviour {
 
     HashSet<Mover> movers = new HashSet<Mover>();
     Collider2D myCollider;
-    int myUID;
-    float cachedSpeedModifier = 0;
 
     void Start() {
         myCollider = GetComponent<Collider2D>();
@@ -26,7 +24,7 @@ public class TerrainSlope : MonoBehaviour {
     }
 
     public void Setup() {
-        myUID = this.GetInstanceID();
+        
     }
 
     public void Tick() {

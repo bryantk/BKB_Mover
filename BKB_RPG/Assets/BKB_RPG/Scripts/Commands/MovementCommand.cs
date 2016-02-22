@@ -5,7 +5,7 @@ namespace BKB_RPG {
 	[System.Serializable]
 	public class MovementCommand {
 
-		public enum CommandTypes { Move, Face, Wait, GoTo, Boolean, Script, Remove, Set};
+		public enum CommandTypes { Move, Face, Wait, GoTo, Boolean, Script, Remove, Set, Note};
         // What kind of command is this?
 		public CommandTypes commandType;
         // Show detailed information in inespector?
@@ -39,7 +39,7 @@ namespace BKB_RPG {
         public float offsetAngle;
         // Transform to move towards.
         public Transform transformTarget;
-        // Find object with name and set transform as target
+        // Find object with name and set transform as target. Also used as note text.
         public string targetName;
         // Vector to move towards. Either relative to self or absolute.
         public Vector2 target;
@@ -57,7 +57,6 @@ namespace BKB_RPG {
         public bool instant;
         // Readjust target each frame (follow a target transform)
         public bool recalculate;
-
 
         public MovementCommand(CommandTypes type=CommandTypes.Move) {
             expandedInspector = true;
@@ -83,6 +82,9 @@ namespace BKB_RPG {
                 break;
             case CommandTypes.Set:
                 SetCommand();
+                break;
+            case CommandTypes.Note:
+                NoteCommand();
                 break;
             case CommandTypes.Move:
             default:
@@ -121,6 +123,9 @@ namespace BKB_RPG {
                 break;
             case CommandTypes.Set:
                 SetCommand();
+                break;
+            case CommandTypes.Note:
+                NoteCommand();
                 break;
             case CommandTypes.Move:
             default:
@@ -181,6 +186,11 @@ namespace BKB_RPG {
             commandType = CommandTypes.Set;
             gotoId = 0;
             setType = SetTypes.Animation;
+        }
+
+        public void NoteCommand() {
+            commandType = CommandTypes.Note;
+            targetName = "";
         }
 
     }

@@ -2,7 +2,6 @@
 using UnityEditor;
 using System.Collections.Generic;
 using SimpleJSON;
-using BKB.Collections;
 
 // TODO
 // System.Action callback=null
@@ -386,38 +385,35 @@ namespace BKB_RPG {
 				return;
 
             MovementCommand.CommandTypes command_type = commands[currentCommandIndex].commandType;
-            if (command_type == MovementCommand.CommandTypes.Wait)
+            switch (command_type)
             {
+            case MovementCommand.CommandTypes.Wait:
                 waitTime += Time.deltaTime;
                 if (waitTime >= commands[currentCommandIndex].time)
                     NextNode();
-            }
-            else if (command_type == MovementCommand.CommandTypes.Move || command_type == MovementCommand.CommandTypes.Face)
-            {
+                break;
+            case MovementCommand.CommandTypes.Move:
+            case MovementCommand.CommandTypes.Face:
                 _MoveCommands();
-            }
-            else if (command_type == MovementCommand.CommandTypes.Boolean)
-            {
+                break;
+            case MovementCommand.CommandTypes.Boolean:
                 _BoolCommands();
                 // This command is a NoOp
                 NextNode();
                 Tick();
-            }
-            else if (command_type == MovementCommand.CommandTypes.GoTo)
-            {
+                break;
+            case MovementCommand.CommandTypes.GoTo:
                 currentCommandIndex = commands[currentCommandIndex].gotoId;
                 // This command is a NoOp
                 Tick();
-            }
-            else if (command_type == MovementCommand.CommandTypes.Script)
-            {
+                break;
+            case MovementCommand.CommandTypes.Script:
                 commands[currentCommandIndex].scriptCalls.Invoke();
                 // This command is a NoOp
                 NextNode();
                 Tick();
-            }
-            else if (command_type == MovementCommand.CommandTypes.Remove)
-            {
+                break;
+            case MovementCommand.CommandTypes.Remove:
                 int start = Mathf.Max(currentCommandIndex - commands[currentCommandIndex].gotoId, 0);
                 int remove = commands[currentCommandIndex].Bool ? 1 : 0;
                 int range = Mathf.Min(commands[currentCommandIndex].gotoId + remove, commands.Count);
@@ -426,9 +422,8 @@ namespace BKB_RPG {
                 // This command is a NoOp
                 NextNode();
                 Tick();
-            }
-            else if (command_type == MovementCommand.CommandTypes.Set)
-            {
+                break;
+            case MovementCommand.CommandTypes.Set:
                 if (commands[currentCommandIndex].setType == MovementCommand.SetTypes.Speed)
                     move_speed = (Speed)commands[currentCommandIndex].gotoId;
                 else
@@ -436,13 +431,18 @@ namespace BKB_RPG {
                 // This command is a NoOp
                 NextNode();
                 Tick();
-            }
+                break;
+            case MovementCommand.CommandTypes.Note:
+                // This command is a NoOp
+                NextNode();
+                Tick();
+                break;
             // ---------------------------------------------
             // DEFINE COMMAND LOGIC HERE
             // ---------------------------------------------
-            else
-            {
+            default:
                 Debug.LogWarning("Unknown command type: " + command_type.ToString());
+                return;
             }
         }
 

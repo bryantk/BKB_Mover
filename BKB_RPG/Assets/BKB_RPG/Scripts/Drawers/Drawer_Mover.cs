@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEditor;
 using BKB_RPG;
+using SimpleJSON;
 
 [CustomEditor(typeof(Mover))]
 public class Drawer_Mover : Editor
@@ -14,7 +15,8 @@ public class Drawer_Mover : Editor
     GUIStyle style;
     float buttonWidth = 80;
     string json;
-    MovementCommand toCopy;
+    int selectionStart = -1;
+    int selectionEnd = -1;
 
 
     void OnEnable() {
@@ -55,7 +57,6 @@ public class Drawer_Mover : Editor
         Vector3 textOffset = offsetAmount;
         for (int i = 0; i < myScript.commands.Count; i++) {
             // --- Command Switch -----------------------------------------------
-
             MovementCommand command = myScript.commands[i];
             if (command.commandType == MovementCommand.CommandTypes.Wait)
             {
@@ -181,9 +182,19 @@ public class Drawer_Mover : Editor
                 Handles.Label(lastPos + textOffset, i.ToString() + ": Set " + command.setType.ToString(), style);
                 textOffset += offsetAmount;
             }
+            else if (command.commandType == MovementCommand.CommandTypes.Note)
+            {
+                Handles.Label(lastPos + textOffset, i.ToString() + ": " + command.targetName.ToString(), style);
+                textOffset += offsetAmount;
+            }
             // ----------------------------------
             // NEW COMMAND SCENE DISPLAY LOGIC
             // ----------------------------------
+            if (i >= selectionStart && i <= selectionEnd)
+            {
+                Rect r = new Rect((Vector2)(lastPos) - Vector2.one/8, Vector2.one/4);
+                Handles.DrawSolidRectangleWithOutline(r, new Color(0.5f, 0.5f, 0.5f, 0.25f), Color.white);
+            }
         }
         Repaint();
     }
@@ -306,6 +317,9 @@ public class Drawer_Mover : Editor
             EditorGUILayout.BeginHorizontal(GUILayout.Width(50));
             command.expandedInspector = EditorGUILayout.Foldout(command.expandedInspector, i.ToString() + ":");
             Rect rt = GUILayoutUtility.GetLastRect();
+            // 'Highlight' box if targeted for copy
+            if (i == selectionStart || (i > selectionStart && i <= selectionEnd))
+                GUI.Box(new Rect(41, rt.y-2, 19, 19), "");
             GUI.Box(new Rect(43, rt.y, 15, 15), "");
             GUI.Label(new Rect(45, rt.y, 18, 18), "?");
             myContextMenu(new Rect(43, rt.y, 15, 15), 1, i);
@@ -382,6 +396,9 @@ public class Drawer_Mover : Editor
                 break;
             case MovementCommand.CommandTypes.Set:
                 stats = "Set " + command.setType.ToString() + " - " + command.gotoId.ToString();
+                break;
+            case MovementCommand.CommandTypes.Note:
+                stats = "\"" + command.targetName + "\"";
                 break;
             // ----------------------------------
             // COMMAND QUICK VIEW
@@ -564,6 +581,9 @@ public class Drawer_Mover : Editor
                     }
                     command.gotoId = EditorGUILayout.IntPopup(text, command.gotoId, displays, values, GUILayout.Width(220));
                     break;
+                case MovementCommand.CommandTypes.Note:
+                    command.targetName = EditorGUILayout.TextField(command.targetName);
+                    break;
                 // ----------------------------------
                 // NEW COMMAND DISPLAY LOGIC HERE
                 // ----------------------------------
@@ -627,45 +647,89 @@ public class Drawer_Mover : Editor
 			Event.current.Use();
 			GenericMenu menu = new GenericMenu ();
 			switch (type) {
-			case 0:
-				// 'New' Menu
+			case 0:     // 'Commands' Menu
 				menu.AddItem (new GUIContent ("New Command"), false, InsertNewCommand, id);
 				menu.AddItem (new GUIContent ("New Command/Move/Up"), false, QuickCommand, new int[2] {id, 1});
 				menu.AddItem (new GUIContent ("New Command/Move/Right"), false, QuickCommand, new int[2] {id, 2});
 				menu.AddItem (new GUIContent ("New Command/Move/Down"), false, QuickCommand, new int[2] {id, 3});
 				menu.AddItem (new GUIContent ("New Command/Move/Left"), false, QuickCommand, new int[2] {id, 4});
 				menu.AddSeparator ("");
-				menu.AddItem (new GUIContent ("Show All"), false, VisiblityControlls, true);
-				menu.AddItem (new GUIContent ("Hide All"), false, VisiblityControlls, false);
-				menu.AddSeparator ("");
-				menu.AddItem (new GUIContent ("Delete All"), false, ClearAll);
-				break;
-			case 1:
-				// 'Modify' Button
-				menu.AddItem (new GUIContent ("Move/Up"), false, Move, new int[2] {id, 1});
-				menu.AddItem (new GUIContent ("Move/Down"), false, Move, new int[2] {id, 0});
-
-				menu.AddItem (new GUIContent ("Insert/Above"), false, InsertNewCommand, (id));
-				menu.AddItem (new GUIContent ("Insert/Below"), false, InsertNewCommand, (id+1));
-
-                menu.AddItem(new GUIContent("Copy"), false, Copy, (id));
-                if (toCopy == null)
-                    menu.AddItem(new GUIContent("Paste"), true, Paste, (id));
+				menu.AddItem (new GUIContent ("Expand/All"), false, VisiblityControlls, true);
+				menu.AddItem (new GUIContent ("Expand/None"), false, VisiblityControlls, false);
+                menu.AddSeparator("");
+                menu.AddItem(new GUIContent("Select/All"), false, Select, new int[] { 5, -1 });
+                menu.AddItem(new GUIContent("Select/None"), false, Select, new int[] { -1, -1 });
+                // Copy
+                if (selectionStart != -1)
+                {
+                    menu.AddItem(new GUIContent("Move Selection/Up"), false, MoveSelection, (true));
+                    menu.AddItem(new GUIContent("Move Selection/Down"), false, MoveSelection, (false));
+                    menu.AddItem(new GUIContent("Copy Selection"), false, CopySelection);
+                }
+                else
+                {
+                    menu.AddDisabledItem(new GUIContent("Move Selection"));
+                    menu.AddDisabledItem(new GUIContent("Copy Selection"));
+                }
+                // Paste    
+                if (EditorPrefs.GetString("BKBMoverCopyData") == "")
+                    menu.AddDisabledItem(new GUIContent("Paste"));
+                else
+                    menu.AddItem(new GUIContent("Paste"), false, Paste, (myScript.commands.Count));
+                menu.AddSeparator ("");
+				menu.AddItem(new GUIContent("Remove/All"), false, ClearAll);
+                menu.AddItem(new GUIContent("Remove/Selected"), false, RemoveSelection);
+                break;
+			case 1:     // 'Modify' Button
+                // Move
+				menu.AddItem(new GUIContent("Move/This/Up"), false, Move, new int[2] {id, 1});
+				menu.AddItem(new GUIContent("Move/This/Down"), false, Move, new int[2] {id, 0});
+                menu.AddItem(new GUIContent("Move/Selection/Up"), false, MoveSelection, (true));
+                menu.AddItem(new GUIContent("Move/Selection/Down"), false, MoveSelection, (false));
+                // Insert 
+                menu.AddItem(new GUIContent("Insert/Above"), false, InsertNewCommand, (id));
+				menu.AddItem(new GUIContent("Insert/Below"), false, InsertNewCommand, (id+1));
+                // Selection
+                menu.AddItem(new GUIContent("Select/All"), false, Select, new int[] { 5, -1 });
+                menu.AddItem(new GUIContent("Select/This"), false, Select, new int[] { 0, id });
+                if (selectionEnd == -1 || id <= selectionEnd)
+                    menu.AddItem(new GUIContent("Select/Mark/Start"), false, Select, new int[] {1, id });
+                else
+                    menu.AddDisabledItem(new GUIContent("Select/Mark/Start"));
+                if (selectionStart == -1 || id >= selectionStart)
+                    menu.AddItem(new GUIContent("Select/Mark/End"), false, Select, new int[] {2, id });
+                else
+                    menu.AddDisabledItem(new GUIContent("Select/Mark/End"));
+                menu.AddItem(new GUIContent("Select/Mark/This+Above"), false, Select, new int[] { 3, id });
+                menu.AddItem(new GUIContent("Select/Mark/This+Below"), false, Select, new int[] { 4, id });
+                menu.AddItem(new GUIContent("Select/None"), false, Select, new int[] {-1, -1 });
+                menu.AddSeparator("");
+                // Copy & Paste
+                // Copy
+                menu.AddItem(new GUIContent("Copy/This"), false, Copy, (id));
+                if (selectionStart != -1)
+                    menu.AddItem(new GUIContent("Copy/Selection"), false, CopySelection);
+                else
+                    menu.AddDisabledItem(new GUIContent("Copy/Selection"));
+                // Paste    
+                if (EditorPrefs.GetString("BKBMoverCopyData") == "")
+                    menu.AddDisabledItem(new GUIContent("Paste"));
                 else
                 {
                     menu.AddItem(new GUIContent("Paste/Above"), false, Paste, (id));
                     menu.AddItem(new GUIContent("Paste/Below"), false, Paste, (id+1));
                 }
                 menu.AddSeparator ("");
-				menu.AddItem (new GUIContent ("Set To/Move/Up"), false, QuickCommand, new int[2] {id, 1});
-				menu.AddItem (new GUIContent ("Set To/Move/Right"), false, QuickCommand, new int[2] {id, 2});
-				menu.AddItem (new GUIContent ("Set To/Move/Down"), false, QuickCommand, new int[2] {id, 3});
-				menu.AddItem (new GUIContent ("Set To/Move/Left"), false, QuickCommand, new int[2] {id, 4});
-				menu.AddItem (new GUIContent ("Remove"), false, RemoveAt, id);
-				break;
+                // Set To
+				menu.AddItem(new GUIContent("Set To/Move/Up"), false, QuickCommand, new int[2] {id, 1});
+				menu.AddItem(new GUIContent("Set To/Move/Right"), false, QuickCommand, new int[2] {id, 2});
+				menu.AddItem(new GUIContent("Set To/Move/Down"), false, QuickCommand, new int[2] {id, 3});
+				menu.AddItem(new GUIContent("Set To/Move/Left"), false, QuickCommand, new int[2] {id, 4});
+				menu.AddItem(new GUIContent("Remove/This"), false, RemoveAt, id);
+                menu.AddItem(new GUIContent("Remove/Selected"), false, RemoveSelection);
+                break;
 			}
 			menu.ShowAsContext ();
-			//SceneView.RepaintAll();
 		}
 	}
 
@@ -680,22 +744,107 @@ public class Drawer_Mover : Editor
 
 	void ClearAll() {
 		myScript.commands = new List<MovementCommand>();
-	}
+        selectionStart = -1;
+        selectionEnd = -1;
+    }
+
+    void Select(object data) {
+        // data = object[int SelectType, int index]
+        // SelectType: 0 = set this, 1 = set start, 2 = set end, 3 = This+above, 4= this+below
+        // index = index of command
+        int[] args = data as int[];
+        int cType = System.Convert.ToInt32(args[0]);
+        int id = System.Convert.ToInt32(args[1]);
+        switch (cType)
+        {
+        case 0: //set as this
+            selectionStart = id;
+            selectionEnd = id;
+            break;
+        case 1: //set start
+            selectionStart = id;
+            if (selectionEnd == -1)
+                selectionEnd = id;
+            break;
+        case 2: //set end
+            selectionEnd = id;
+            if (selectionStart == -1)
+                selectionStart = id;
+            break;
+        case 3: //set as this+above
+            selectionStart = 0;
+            selectionEnd = id;
+            break;
+        case 4: //set as this+below
+            selectionStart = id;
+            selectionEnd = myScript.commands.Count;
+            break;
+        case 5: //set all
+            selectionStart = 0;
+            selectionEnd = myScript.commands.Count-1;
+            break;
+        default: //clear
+            selectionStart = -1;
+            selectionEnd = -1;
+            return;
+        }
+    }
 
     void Copy(object data) {
         int id = System.Convert.ToInt32(data);
-        toCopy = myScript.commands[id];
+        JSONArray json = new JSONArray();
+        json.Add(JSON.Parse(JsonUtility.ToJson(myScript.commands[id])));
+        EditorPrefs.SetString("BKBMoverCopyData", json.ToString());
+    }
+
+    void CopySelection() {
+        JSONArray json = new JSONArray();
+        for (int i = selectionStart; i <= selectionEnd; i++)
+        {
+            string jsonStr = JsonUtility.ToJson(myScript.commands[i]);
+            json.Add(JSON.Parse(jsonStr));
+        }
+        EditorPrefs.SetString("BKBMoverCopyData", json.ToString());
     }
 
     void Paste(object data) {
         int id = System.Convert.ToInt32(data);
-        myScript.commands.Insert(id, toCopy.Copy());
+        string jsonStr = EditorPrefs.GetString("BKBMoverCopyData");
+        JSONNode json = JSON.Parse(jsonStr);
+        int offset = 0;
+        foreach(JSONNode j in json.Children)
+        {
+            myScript.commands.Insert(id + offset, JsonUtility.FromJson<MovementCommand>(j.ToString()));
+        }
+        
+        // TODO - array of JSON, for each
+        //myScript.commands.Insert(id, JsonUtility.FromJson<MovementCommand>(jsonStr));
     }
 
-	void RemoveAt(object data) {
+    void RemoveAt(object data) {
 		int id = System.Convert.ToInt32(data);
 		myScript.commands.RemoveAt(id);
-	}
+        if (selectionStart == selectionEnd && selectionEnd == id)
+        {
+            selectionStart = -1;
+            selectionEnd = -1;
+            return;
+        }
+        if (id < selectionEnd)
+        {
+            selectionEnd--;
+            if (id < selectionStart)
+                selectionStart--;
+        }
+    }
+
+    void RemoveSelection() {
+        if (selectionStart == -1)
+            return;
+        myScript.commands.RemoveRange(selectionStart, selectionEnd - selectionStart);
+        selectionStart = -1;
+        selectionEnd = -1;
+    }
 
 	void Move(object data) {
 		if (myScript.commands.Count < 2)
@@ -714,7 +863,29 @@ public class Drawer_Mover : Editor
         command.expandedInspector = false;
     }
 
-	void InsertNewCommand(object data) {
+    void MoveSelection(object data) {
+        bool up = System.Convert.ToBoolean(data);
+        if (selectionStart == 0 && selectionEnd == myScript.commands.Count - 1)
+            return;
+        MovementCommand command;
+        if (up && selectionStart > 0)
+        {
+            selectionStart--;
+            command = myScript.commands[selectionStart];
+            RemoveAt(selectionStart);
+            myScript.commands.Insert(selectionEnd+1, command);
+        }
+        if (!up && selectionEnd < myScript.commands.Count-1)
+        {
+            selectionEnd++;
+            command = myScript.commands[selectionEnd];
+            RemoveAt(selectionEnd);
+            myScript.commands.Insert(selectionStart, command);
+            selectionStart++;
+        }
+    }
+
+    void InsertNewCommand(object data) {
 		int id = System.Convert.ToInt32(data);
         MovementCommand newCommand = new MovementCommand(MovementCommand.CommandTypes.Move);
         myScript.commands.Insert(id, newCommand);
