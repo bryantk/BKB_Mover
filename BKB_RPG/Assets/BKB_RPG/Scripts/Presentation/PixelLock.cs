@@ -7,9 +7,10 @@ namespace BKB_RPG {
 
 		public int pixelsPerUnit = 16;
         public float resolution;
+        // accumulate non-pixel movement
 		Vector3 carry;
 
-		void Awake() {
+		void OnEnable() {
 			carry = Vector3.zero;
 			pixelsPerUnit = pixelsPerUnit > 0 ? pixelsPerUnit : 1;
 			resolution = 1f / pixelsPerUnit;

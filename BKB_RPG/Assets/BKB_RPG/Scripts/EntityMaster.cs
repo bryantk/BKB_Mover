@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using System.Collections.Generic;
+using System.Collections;
 
 namespace BKB_RPG {
     public class EntityMaster : MonoBehaviour {
@@ -8,6 +8,8 @@ namespace BKB_RPG {
         public enum dirs { Free, Four, Eight };
         public dirs directions = dirs.Free;
         public float unitDistance = 1f;
+
+        private Entity playerEntity;
 
         private Entity[] entities;
 
@@ -19,7 +21,7 @@ namespace BKB_RPG {
                 OnAwake();
             }
             else {
-                Debug.LogWarning("MoverMaster already exists, deleting.");
+                Debug.LogWarning("EntityMaster already exists, deleting.");
                 Destroy(this.gameObject);
                 return;
             }
@@ -39,7 +41,10 @@ namespace BKB_RPG {
             {
                 entity.Setup();
             }
+            playerEntity = FindObjectOfType<Player>();
         }
+
+
 
         // Use this for initialization
         void Start() {
@@ -50,8 +55,49 @@ namespace BKB_RPG {
         void Update() {
             foreach (Entity entity in entities)
             {
-                entity.Tick();
+                entity.iTick();
             }
         }
+
+
+
+        #region Pause + Resume
+        public void PauseAll() {
+            PauseNPC();
+            PausePlayer();
+        }
+
+        public void PauseNPC() {
+            foreach (Entity entity in entities)
+            {
+                if (entity == playerEntity)
+                    continue;
+                entity.iPause();
+            }
+        }
+
+        public void PausePlayer() {
+            playerEntity.iPause();
+        }
+
+
+        public void ResumeAll() {
+            ResumeNPC();
+            ResumePlayer();
+        }
+
+        public void ResumeNPC() {
+            foreach (Entity entity in entities)
+            {
+                if (entity == playerEntity)
+                    continue;
+                entity.iResume();
+            }
+        }
+
+        public void ResumePlayer() {
+            playerEntity.iResume();
+        }
+        #endregion
     }
 }
