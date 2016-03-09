@@ -1,14 +1,18 @@
 ﻿using UnityEngine;
+using System.Collections.Generic;
 
 
 namespace BKB_RPG {
 	public static class Utils {
 
 		public static RaycastHit2D Raycast(Vector2 position, Vector2 castDir, int rays=1, float spread=1,
-		                                   float lookAhead=0.5f, Transform self=null, int layers=Physics2D.DefaultRaycastLayers) {
-			// spread = collider.radius * spread
-			// lookAhead = collider.radius + speed * stop_range
-			// move compare location slightly forward to prevent hitting own collider.
+		                                   float lookAhead=0.5f, Transform self=null, int layers=Physics2D.DefaultRaycastLayers,
+                                           float minDepth=-Mathf.Infinity, float maxDepth=Mathf.Infinity) {
+            // spread = collider.radius * spread
+            // lookAhead = collider.radius + speed * stop_range
+            // move compare location slightly forward to prevent hitting own collider.
+            if (layers == 0)
+                return new RaycastHit2D();
 			position += castDir * 0.025f;
 			Debug.DrawLine(position, position + castDir * lookAhead, Color.yellow);
 			RaycastHit2D hit = Physics2D.Raycast(position, castDir, lookAhead, layers);
@@ -21,7 +25,7 @@ namespace BKB_RPG {
 				// right side
 				Vector2 test_location = position + offset * x * spread;
 				Debug.DrawLine(test_location, test_location + castDir * lookAhead * decay, Color.yellow);
-				hit = Physics2D.Raycast(test_location, castDir, lookAhead * decay, layers);
+				hit = Physics2D.Raycast(test_location, castDir, lookAhead * decay, layers, minDepth, maxDepth);
 				if (hit && hit.transform != self)
 					return hit;
 				// left side
@@ -138,6 +142,38 @@ namespace BKB_RPG {
             // 180 = Front
             // 270 = Left side
             return diff % 360;
+        }
+
+
+        public static LayerMask LayerMaskField(string label, LayerMask layerMask) {
+            //by FlyingOstriche
+            List<string> layers = new List<string>();
+            List<int> layerNumbers = new List<int>();
+
+            for (int i = 0; i < 32; i++)
+            {
+                string layerName = LayerMask.LayerToName(i);
+                if (layerName != "")
+                {
+                    layers.Add(layerName);
+                    layerNumbers.Add(i);
+                }
+            }
+            int maskWithoutEmpty = 0;
+            for (int i = 0; i < layerNumbers.Count; i++)
+            {
+                if (((1 << layerNumbers[i]) & layerMask.value) > 0)
+                    maskWithoutEmpty |= (1 << i);
+            }
+            maskWithoutEmpty = UnityEditor.EditorGUILayout.MaskField(label, maskWithoutEmpty, layers.ToArray());
+            int mask = 0;
+            for (int i = 0; i < layerNumbers.Count; i++)
+            {
+                if ((maskWithoutEmpty & (1 << i)) > 0)
+                    mask |= (1 << layerNumbers[i]);
+            }
+            layerMask.value = mask;
+            return layerMask;
         }
 
     }

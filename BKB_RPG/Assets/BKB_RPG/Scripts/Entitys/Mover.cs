@@ -11,7 +11,7 @@ namespace BKB_RPG {
 	[RequireComponent(typeof(CircleCollider2D))]
     [RequireComponent(typeof(Rigidbody2D))]
     [System.Serializable]
-	public class Mover : MonoBehaviour, IPauseable, ISavable {
+	public class Mover : MonoBehaviour, IPauseable, ISavable, ITick {
         // enum definitions.
 		public enum RepeatBehavior{None, PingPong, Loop, ResetAndLoop}; 
 		public enum Speed{Slowest=5, Slower=15, Slow=30, Normal=50, Faster=100, Fastest=200}
@@ -48,13 +48,17 @@ namespace BKB_RPG {
         public bool compelete = false;
         // Entity is paused
         bool pause = false;
+        // Stored speed modifier - used for moving on slopes
+        public float speedModifier = 1;
+        //
+        public int collisionLayerMask = Physics2D.DefaultRaycastLayers;
 
         // TODO
         public bool alwaysAnimate = false;
         public bool clipEnties = false;
         public bool clipAll = false;
 
-        public float speedModifier = 1;
+        
 
         #region Movement Options
         // % spread of raycasts. 1 = flush with collider radius.
@@ -105,8 +109,10 @@ namespace BKB_RPG {
         #endregion
 
         #region References for speedy lookups
+        // If not set in inspector, object will assign to animator on itself
+        public Animator anim;
         Entity entity;
-        Animator anim;
+        
         Renderer render;
         #endregion
 
@@ -149,7 +155,8 @@ namespace BKB_RPG {
 			startPosition = transform.position;
 			if (radius == 0)
 				radius = GetComponent<CircleCollider2D>().radius;
-			anim = GetComponent<Animator>();
+            if (anim == null)
+    			anim = GetComponent<Animator>();
             render = GetComponent<Renderer>();
             // pixelLock may impose a larger step than move speed.
             PixelLock pixel = GetComponent<PixelLock>();
@@ -240,10 +247,8 @@ namespace BKB_RPG {
             switch (command.move_type)
             {
             case MovementCommand.MoverTypes.Absolute:
-                //result = command.target;
                 break;
             case MovementCommand.MoverTypes.Relative:
-                result = command.target;
                 result += transform.position;
                 break;
             case MovementCommand.MoverTypes.To_transform:
@@ -305,27 +310,26 @@ namespace BKB_RPG {
                 // if facing command, modify target
                 if (command.commandType == MovementCommand.CommandTypes.Face)
                 {
-                    float random = facing;
+                    float random = Utils.AngleBetween(transform.position, target);
+                    // Apply randoms
                     if (command.randomType == MovementCommand.RandomTypes.Linear)
-                    {
                         random += Random.Range(command.random.x, command.random.y);
-                    }
                     else if (command.randomType == MovementCommand.RandomTypes.Area)
                     {
                         if (Random.value >= 0.5f)
                             random += Random.Range(command.random.x, command.random.y);
                         else
                             random += Random.Range(command.random2.x, command.random2.y);
-                    } else
+                    }
+                    else
                         random += command.offsetAngle;
                     random = Utils.ClampAngle(random, (int)directions);
-                    target = transform.position + (Vector3)Utils.AngleMagnitudeToVector2(random, 1);
-                    SetFacing(Utils.AngleBetween(transform.position, target));
+                    SetFacing(random);
                     NextNode();
                     return;
                 }
             }
-            else if (command.recalculate)
+            else if (command.recalculate && (command.move_type == MovementCommand.MoverTypes.To_transform || command.move_type == MovementCommand.MoverTypes.ObjName))
                 target = (Vector3)command.transformTarget.position;
             if ((transform.position-target).magnitude > 0.1f)
                 SetFacing(Utils.AngleBetween(transform.position, target));
@@ -380,7 +384,7 @@ namespace BKB_RPG {
         }
 
 
-        public void Tick() {
+        public void iTick() {
 			if (compelete || pause|| commands.Count == 0)
 				return;
 
@@ -400,18 +404,18 @@ namespace BKB_RPG {
                 _BoolCommands();
                 // This command is a NoOp
                 NextNode();
-                Tick();
+                iTick();
                 break;
             case MovementCommand.CommandTypes.GoTo:
                 currentCommandIndex = commands[currentCommandIndex].gotoId;
                 // This command is a NoOp
-                Tick();
+                iTick();
                 break;
             case MovementCommand.CommandTypes.Script:
                 commands[currentCommandIndex].scriptCalls.Invoke();
                 // This command is a NoOp
                 NextNode();
-                Tick();
+                iTick();
                 break;
             case MovementCommand.CommandTypes.Remove:
                 int start = Mathf.Max(currentCommandIndex - commands[currentCommandIndex].gotoId, 0);
@@ -421,7 +425,7 @@ namespace BKB_RPG {
                 currentCommandIndex = start - remove;
                 // This command is a NoOp
                 NextNode();
-                Tick();
+                iTick();
                 break;
             case MovementCommand.CommandTypes.Set:
                 if (commands[currentCommandIndex].setType == MovementCommand.SetTypes.Speed)
@@ -430,12 +434,12 @@ namespace BKB_RPG {
                     animation_speed = (aSpeed)commands[currentCommandIndex].gotoId;
                 // This command is a NoOp
                 NextNode();
-                Tick();
+                iTick();
                 break;
             case MovementCommand.CommandTypes.Note:
                 // This command is a NoOp
                 NextNode();
-                Tick();
+                iTick();
                 break;
             // ---------------------------------------------
             // DEFINE COMMAND LOGIC HERE
@@ -447,35 +451,45 @@ namespace BKB_RPG {
         }
 
 
-        public int StepTowards(Vector3 target, float stopWithin = 0f, bool trySlide=true) {
+        public int StepTowards(Vector3 target, float stopWithin = 0f, bool trySlide=true, float speedModifier=1) {
             Vector2 dir = target - transform.position;
-            float mySpeed = speed * speedModifier;
+
+            if (speedModifier == 1)
+                speedModifier = speed * this.speedModifier;
+            float mySpeed = speedModifier;
             // within destination?
-			if (dir.magnitude <= Mathf.Max(mySpeed, Mathf.Max(nearestPixel, stopWithin))) {
-                if (stopWithin == 0)
-    				transform.position = target;
+            if (dir.magnitude <= Mathf.Max(mySpeed, Mathf.Max(nearestPixel, stopWithin)))
+            {
+                if (stopWithin == 0) {
+                    target.z = transform.position.z;
+                    transform.position = target;
+                }
 				return (int)results.Complete;
 			}
-			// ray cast
-			RaycastHit2D hit = Utils.Raycast(transform.position, dir.normalized, ray_density,
-			                                 radius*spread, radius + mySpeed * stop_range, this.transform);
+            // ray cast
+            dir = dir.normalized;
+            // Begin the raycast near the back edge of the collider
+            Vector3 offset = (Vector3)dir * radius * 0.5f;
+            RaycastHit2D hit = Utils.Raycast((transform.position - offset), dir, ray_density,
+			                                 radius*spread, lookAhead:(radius + mySpeed * stop_range + offset.magnitude),
+                                             self:this.transform, layers:collisionLayerMask);
 			if (hit && !hit.collider.isTrigger) {
                 // DEBUG only
-                if (EditorApplication.isPlaying && hit.transform == this.transform) {
+                #if UNITY_EDITOR
+                if (hit.transform == this.transform)
 					Debug.LogWarning(this.name + " colliding with self.");
-				}
-
-				if (slide && trySlide) {
-					Vector3 t = Vector3.Cross(dir.normalized, hit.normal);
+                #endif
+                if (slide && trySlide) {
+					Vector3 t = Vector3.Cross(dir, hit.normal);
 					t = Vector3.Cross(hit.normal, t);
 					t.z = 0;
-					return StepTowards (transform.position + (Vector3)t.normalized, stopWithin, false);
+					return StepTowards (transform.position + (Vector3)t.normalized, stopWithin, false, speedModifier);
 				}
                 entity.OnCollision(hit.transform);
 				return (int)results.Hit;
 			}
 			// move some
-			transform.position += (Vector3)dir.normalized * mySpeed;
+			transform.position += (Vector3)dir * mySpeed;
 			return (int)results.Nil;
 		}
     //end class

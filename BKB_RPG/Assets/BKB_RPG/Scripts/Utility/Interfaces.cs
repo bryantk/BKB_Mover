@@ -10,3 +10,7 @@ public interface ISavable {
     string iSave();
     void iLoad(string json);
 }
+
+public interface ITick {
+    void iTick();
+}

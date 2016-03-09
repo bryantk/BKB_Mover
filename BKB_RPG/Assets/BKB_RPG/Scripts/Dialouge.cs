@@ -4,62 +4,50 @@ using System.Collections;
 namespace BKB_TEXT {
     public class Dialouge : MonoBehaviour {
 
-        public string speakerName;
         public string text;
-        public string displayText;
 
-        public int zDepth;
-        public float rate = 0;
-        // TODO - Group1: ',' '-' with space on right   light pauase
-        //          Group2: '.', '?', '!'               pause
-        public float punctuationModifier = 1;
-        public float newPageModifier = 1;
+        float _next;
 
-        public enum TextLocationEnum{Top, Middle, Bottom, Auto, Location}
-        public TextLocationEnum textLocation;
-        public Vector2 location;
-
-        private int textLength;
-        private int index;
         // Dictionary of text commands and thier start/end location
 
         // Use this for initialization
         void Start() {
-            index = 0;
+            //index = 0;
             // TODO - Remove HTML codes
-            textLength = text.Length;
-            StartCoroutine(Output());
+            //textLength = text.Length;
+            //StartCoroutine(Output());
+            S("123456789 cat <x000000>five n<xffffff>D ! hi there");
         }
 
-        public void Setup(string text, TextLocationEnum textLocation = TextLocationEnum.Auto, string name="", float rate=0, Vector2? at = null, int zDepth=0) {
+        DialougeData data;
 
-            index = 0;
-            // TODO - Remove HTML codes
-            textLength = text.Length;
-
-            this.textLocation = textLocation;
-            speakerName = name;
-            this.rate = rate;
-            this.zDepth = zDepth;
+        public void S(string text) {
+            data = new DialougeData(text);
+            _next = Time.fixedTime + data.character_delay;
         }
 
-        IEnumerator Output() {
-            while (true)
+        void Update() {
+            ITick();
+        }
+
+        void ITick() {
+            text = data.text;
+            if (data._index >= data._length)
             {
-                if (rate == 0 || index >= textLength)
-                {
-                    displayText = text;
-                    yield break;
-                }
-                float wait = rate;
-                string next = text[index++].ToString();
-                displayText += next;
-                if (".?!,".Contains(next))
-                    wait *= punctuationModifier;
-                if ("\n".Contains(next))
-                    wait *= newPageModifier;
-                yield return new WaitForSeconds(wait);
+                if (Input.anyKeyDown)
+                    S("Time is " + Time.unscaledTime.ToString() + " and some bit. Average = 860 characters per minute, 15 characters per second, 0.25 per frame");
+                return;
             }
+            if (Time.unscaledTime >= _next)
+                _next = data.Advance();
+  
+
+
         }
+
+        void OnGUI() {
+            GUI.Label(new Rect(10, 10, 200, 120), text);
+        }
+
     }
 }

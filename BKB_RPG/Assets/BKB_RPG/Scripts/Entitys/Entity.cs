@@ -3,7 +3,7 @@ using UnityEngine.Events;
 using System.Collections;
 
 namespace BKB_RPG {
-    public class Entity : MonoBehaviour, IPauseable {
+    public class Entity : MonoBehaviour, IPauseable, ITick {
 
         public delegate void NullDelegate();
         NullDelegate tickDelegate;
@@ -34,11 +34,11 @@ namespace BKB_RPG {
             if (bkb_mover != null)
             {
                 bkb_mover.Setup(this);
-                tickDelegate += bkb_mover.Tick;
+                tickDelegate += bkb_mover.iTick;
             }
         }
 
-        public void Tick() {
+        public void iTick() {
             if (tickDelegate != null)
                 tickDelegate();
         }

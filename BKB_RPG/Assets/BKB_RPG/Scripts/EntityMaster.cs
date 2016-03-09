@@ -21,7 +21,7 @@ namespace BKB_RPG {
                 OnAwake();
             }
             else {
-                Debug.LogWarning("MoverMaster already exists, deleting.");
+                Debug.LogWarning("EntityMaster already exists, deleting.");
                 Destroy(this.gameObject);
                 return;
             }
@@ -55,7 +55,7 @@ namespace BKB_RPG {
         void Update() {
             foreach (Entity entity in entities)
             {
-                entity.Tick();
+                entity.iTick();
             }
         }
 

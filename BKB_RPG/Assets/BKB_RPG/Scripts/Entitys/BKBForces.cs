@@ -3,14 +3,19 @@ using System.Collections.Generic;
 using BKB_RPG;
 
 [RequireComponent(typeof(Collider2D))]
-public class TerrainSlope : MonoBehaviour {
+public class BKBForces : MonoBehaviour, ITick {
 
     // TODO - 2nd script that locks player out of input while in
-
-    public int gravityAngle = 180;
+    [Tooltip("Direction force is applied.")]
+    public int Angle = 180;
+    [Tooltip("When moving against Angle (within 45 degrees) rate movement speed is multiplied by." +
+        "0 = unimpeded flat, 1 = one way cliff. Less jarring than apllying a small constant force.")]
     [Range(0, 1)]
-    public float speedModifier = 1;
-    public float gravity = 0;
+    public float slopeInclination = 0;
+    [Tooltip("Strength of force. 50 = normal move speed.")]
+    public float Force = 0;
+    [Tooltip("Always apply force. Use for Wind, Conveyor Belts, etc.")]
+    public bool ConstantForce = false;
 
     HashSet<Mover> movers = new HashSet<Mover>();
     Collider2D myCollider;
@@ -20,14 +25,14 @@ public class TerrainSlope : MonoBehaviour {
     }
 
     void Update() {
-        Tick();
+        iTick();
     }
 
     public void Setup() {
         
     }
 
-    public void Tick() {
+    public void iTick() {
         // TODO - do less than once per frame?
         foreach (Mover mover in movers)
         {
@@ -47,43 +52,40 @@ public class TerrainSlope : MonoBehaviour {
             }
             if (mover.moving)
             {
-                float angle = Mathf.Abs(mover.movementAngle - gravityAngle);
+                float angle = Mathf.Abs(mover.movementAngle - Angle);
                 // going with gravity
                 if (angle <= 45)
-                    modifier = 1f + speedModifier / 2f;
+                    modifier = 1f + slopeInclination / 2f;
                 // going against
                 else if (angle >= 135)
-                    modifier = 1f - speedModifier;
+                    modifier = 1f - slopeInclination;
+                mover.speedModifier = modifier;
             }
-            else if (gravity != 0)
+            if (Force != 0 && (ConstantForce || !mover.moving))
             {
-                Vector2 offset = Utils.AngleMagnitudeToVector2(gravityAngle, 1);
-                modifier = gravity;
-                mover.StepTowards(mover.transform.position + (Vector3)offset);
+                Vector2 offset = Utils.AngleMagnitudeToVector2(Angle, 1);
+                mover.StepTowards(mover.transform.position + (Vector3)offset, speedModifier: Force/1000);
             }
-            mover.speedModifier = modifier;
-            print(mover.name);
         }
     }
 
-
-    // TODO - handle depth at entity's feet
     void OnTriggerEnter2D(Collider2D other) {
         Mover m = other.GetComponent<Mover>();
         if (m != null && m.affectedBySlope)
-        {
             movers.Add(m);
-        }
-
     }
 
     void OnTriggerExit2D(Collider2D other) {
         Mover m = other.GetComponent<Mover>();
         if (m != null && movers.Contains(m))
         {
-            m.speedModifier = 1;
+            m.speedModifier = 1f;
             movers.Remove(m);
         }
+    }
+
+    void OnDrawGizmos() {
+        Gizmos.DrawIcon(transform.position, "bkb_wind", true);
     }
 
 }

@@ -99,11 +99,17 @@ public class Drawer_Mover : Editor
                     break;
                 case MovementCommand.MoverTypes.Angle:
                     target += (Vector3)Utils.AngleMagnitudeToVector2(command.offsetAngle, command.maxStep);
+
+                    //Vector3 t = (Vector3)Utils.AngleMagnitudeToVector2(command.offsetAngle, 1);
+                    //Vector3 te = Handles.Slider(target, t, 0.125f, Handles.SphereCap, 1);
+                    //command.maxStep = (target - te).magnitude;
+                    // TODO
                     Vector3 temp2 = target;
                     temp2 = Handles.FreeMoveHandle(temp2, Quaternion.identity, 0.125f, Vector3.one, Handles.SphereCap);
                     temp2 = temp2 - lastPos;
                     command.maxStep = temp2.magnitude;
-                    command.offsetAngle = Utils.Vector2toAngle((Vector2)temp2);
+                    //command.offsetAngle = Utils.Vector2toAngle((Vector2)temp2);
+
                     if (command.instant)
                         Utils.DrawDottedArrow(lastPos, target, Color.cyan);
                     else
@@ -223,11 +229,7 @@ public class Drawer_Mover : Editor
         EditorGUILayout.PropertyField(serializedObject.FindProperty("facing"),
             new GUIContent("Facing Angle", "0 is up/north, 90 is right/east"));
         EditorGUI.indentLevel = 1;
-
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("moving"),
-            new GUIContent("Moving", "0 is up/north, 90 is right/east"));
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("movementAngle"),
-            new GUIContent("Moving", "0 is up/north, 90 is right/east"));
+        
 
         myScript.showSettings = EditorGUILayout.Foldout(myScript.showSettings, "Options");
         if (myScript.showSettings)
@@ -245,15 +247,24 @@ public class Drawer_Mover : Editor
             EditorGUILayout.PropertyField(serializedObject.FindProperty("slide"), new GUIContent("Slide on hit?"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("affectedBySlope"),
                 new GUIContent("Affected by Slope", "Slope areas will affect this mover?"));
-
         }
         // Advanced Options
         myScript.showOptions = EditorGUILayout.Foldout(myScript.showOptions, "Advanced");
         if (myScript.showOptions)
         {
-            myScript.compelete = EditorGUILayout.Toggle("Paused", myScript.compelete);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("anim"),
+                new GUIContent("Animator", "Assigned on startup if null."));
+
+            // myScript.collisionMask = EditorGUILayout.LayerField(new GUIContent("Collides", "Layers to collide with"), myScript.collisionMask);
+            myScript.collisionLayerMask = Utils.LayerMaskField("Collision Layers", myScript.collisionLayerMask);
+
+
             EditorGUILayout.PropertyField(serializedObject.FindProperty("advanceDebugDraw"),
-                new GUIContent("Advacned Debug", "Show advanced options in inspector GUI."));
+                new GUIContent("Advanced Debug", "Show advanced options in inspector GUI."));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("compelete"),
+                new GUIContent("Paused", "Paused - Do not proccess commands."));
+
+            EditorGUILayout.Space();
             EditorGUILayout.LabelField("Collision Settings:");
             EditorGUI.indentLevel = 2;
             serializedObject.FindProperty("spread").floatValue =
@@ -395,7 +406,7 @@ public class Drawer_Mover : Editor
                 stats = "Remove " + command.gotoId + " commands";
                 break;
             case MovementCommand.CommandTypes.Set:
-                stats = "Set " + command.setType.ToString() + " - " + command.gotoId.ToString();
+                stats = "Set " + command.setType.ToString() + " = " + command.gotoId.ToString();
                 break;
             case MovementCommand.CommandTypes.Note:
                 stats = "\"" + command.targetName + "\"";
