@@ -18,9 +18,10 @@ namespace BKB_RPG {
 
         }
 
+        // TODO - move this to GameMaster
         public void Battle(bool playerInstigated=false) {
-            EntityMaster._instance.PauseAll();
-            float playerFacing = Player._instance.GetComponent<Mover>().facing;
+            GameMaster.PauseAll();
+            float playerFacing = GameMaster._instance.playerData.mover.facing;
             float myFacing = this.GetComponent<Mover>().facing;
             if (playerInstigated)
             {
@@ -37,7 +38,7 @@ namespace BKB_RPG {
                     print("Enemy's Favor");
             }
             // TODO - Call battle
-            EntityMaster._instance.ResumeAll();
+            GameMaster.ResumeAll();
         }
     }
 }

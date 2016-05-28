@@ -13,7 +13,7 @@ namespace BKB_RPG {
 
         // BOOL
         public enum FlagType { LockFacing, AlwaysAnimate, Clip, ClipAll, Invisible, IgnoreImpossible, Reverse, Pause, Script };
-        // What kind of bool command.
+        // What kind of bool 
         public FlagType flag;
         public bool Bool;   // and Remove
 
@@ -57,40 +57,12 @@ namespace BKB_RPG {
         public bool instant;
         // Readjust target each frame (follow a target transform)
         public bool recalculate;
+        // # of lines inspector should reserve
+        public int lines;
 
         public MovementCommand(CommandTypes type=CommandTypes.Move) {
-            expandedInspector = true;
-            switch (type)
-            {
-            case CommandTypes.Boolean:
-                BoolCommand();
-                break;
-            case CommandTypes.Wait:
-                WaitCommand();
-                break;
-            case CommandTypes.GoTo:
-                GoToCommand();
-                break;
-            case CommandTypes.Face:
-                FaceCommand();
-                break;
-            case CommandTypes.Script:
-                ScriptCommand();
-                break;
-            case CommandTypes.Remove:
-                RemoveCommand();
-                break;
-            case CommandTypes.Set:
-                SetCommand();
-                break;
-            case CommandTypes.Note:
-                NoteCommand();
-                break;
-            case CommandTypes.Move:
-            default:
-                MoveCommand();
-                break;
-            }
+            SetMovementCommand(type);
+            return;
         }
 
 
@@ -101,6 +73,7 @@ namespace BKB_RPG {
 
         public void SetMovementCommand(CommandTypes type = CommandTypes.Move) {
             expandedInspector = true;
+            lines = 1;
             switch (type)
             {
             case CommandTypes.Boolean:
@@ -191,6 +164,89 @@ namespace BKB_RPG {
         public void NoteCommand() {
             commandType = CommandTypes.Note;
             targetName = "";
+        }
+
+        /// <summary>
+        /// Constructs a one line summary of the command
+        /// </summary>
+        public string BuildSummary() {
+            string summary = "";
+            switch (commandType)
+            {
+            case MovementCommand.CommandTypes.Move:
+            case MovementCommand.CommandTypes.Face:
+                switch (move_type)
+                {
+                case MovementCommand.MoverTypes.To_transform:
+                    if (transformTarget != null)
+                        summary = "TO: " + transformTarget.name;
+                    else
+                        summary = "TO: NULL";
+                    break;
+                case MovementCommand.MoverTypes.ObjName:
+                    summary = "TO: " + targetName;
+                    break;
+                default:
+                    Vector2 norm = target.normalized;
+                    if (norm == Vector2.up)
+                        summary = "Up " + target.y;
+                    else if (norm == Vector2.right)
+                        summary = "Right " + target.x;
+                    else if (norm == Vector2.down)
+                        summary = "Down " + Mathf.Abs(target.y);
+                    else if (norm == Vector2.left)
+                        summary = "Left " + Mathf.Abs(target.x);
+                    else
+                        summary = target.ToString() + " " + move_type.ToString();
+                    break;
+                case MovementCommand.MoverTypes.Angle:
+                    if (offsetAngle == 0)
+                        summary = "Forward " + maxStep;
+                    else if (offsetAngle == 90)
+                        summary = "Right " + maxStep;
+                    else if (offsetAngle == 180)
+                        summary = "Back " + maxStep;
+                    else if (offsetAngle == 270)
+                        summary = "Left " + maxStep;
+                    else
+                        summary = "Move " + maxStep + " at " + offsetAngle + " degrees";
+                    break;
+                }
+                if (withinDistance > 0)
+                    summary = "*" + summary;
+                if (instant)
+                    summary = "!" + summary;
+                break;
+            case MovementCommand.CommandTypes.Wait:
+                summary = time.ToString() + " seconds";
+                break;
+            case MovementCommand.CommandTypes.Boolean:
+                summary = string.Format("{0} : {1}", flag, Bool);
+                break;
+            case MovementCommand.CommandTypes.GoTo:
+                summary = "GoTo command " + gotoId.ToString();
+                break;
+            case MovementCommand.CommandTypes.Script:
+                summary = "Call scripts: " + scriptCalls.GetPersistentEventCount();
+                break;
+            case MovementCommand.CommandTypes.Remove:
+                summary = "Remove " + gotoId + " commands";
+                break;
+            case MovementCommand.CommandTypes.Set:
+                summary = "Set " + setType.ToString() + " = " + gotoId.ToString();
+                break;
+            case MovementCommand.CommandTypes.Note:
+                summary = "\"" + targetName + "\"";
+                break;
+            // ----------------------------------
+            // COMMAND QUICK VIEW
+            // ----------------------------------
+            default:
+                summary = commandType.ToString() + " not implemented";
+                break;
+            }
+
+            return summary;
         }
 
     }

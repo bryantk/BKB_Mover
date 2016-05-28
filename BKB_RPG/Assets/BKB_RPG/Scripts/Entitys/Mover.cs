@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using UnityEditor;
 using System.Collections.Generic;
 using SimpleJSON;
 
@@ -153,6 +152,13 @@ namespace BKB_RPG {
 		public void Setup(Entity entity) {
             this.entity = entity;
 			startPosition = transform.position;
+
+            foreach (MovementCommand command in commands)
+            {
+                if (command.targetName.ToUpper() == "PLAYER")
+                    command.transformTarget = GameMaster.GetPlayerTransform();
+            }
+
 			if (radius == 0)
 				radius = GetComponent<CircleCollider2D>().radius;
             if (anim == null)
@@ -168,7 +174,7 @@ namespace BKB_RPG {
                 SetAnimation("speed", animation_rate);
             else
                 SetAnimation("speed", 0);
-
+            SetFacing(facing);
             currentCommandIndex = -1;
             NextNode();
         }
@@ -189,6 +195,7 @@ namespace BKB_RPG {
 					currentCommandIndex = 0;
 					break;
 				case RepeatBehavior.ResetAndLoop:
+                    Debug.Log("reset");
 					transform.position = startPosition;
 					currentCommandIndex = 0;
 					break;
@@ -228,7 +235,7 @@ namespace BKB_RPG {
             SetAnimation("y", f.y);
         }
 
-        void SetAnimation(string name, float value) {
+        public void SetAnimation(string name, float value) {
 			if (anim == null)
 				return;
 			anim.SetFloat(name, value);
@@ -251,8 +258,8 @@ namespace BKB_RPG {
             case MovementCommand.MoverTypes.Relative:
                 result += transform.position;
                 break;
-            case MovementCommand.MoverTypes.To_transform:
             case MovementCommand.MoverTypes.ObjName:
+            case MovementCommand.MoverTypes.To_transform:
                 if (command.transformTarget == null)
                     throw new System.Exception(string.Format("Command {0} target not set on object '{1}'", currentCommandIndex, name));
                 result = command.transformTarget.position;
@@ -458,7 +465,7 @@ namespace BKB_RPG {
                 speedModifier = speed * this.speedModifier;
             float mySpeed = speedModifier;
             // within destination?
-            if (dir.magnitude <= Mathf.Max(mySpeed, Mathf.Max(nearestPixel, stopWithin)))
+            if (dir.magnitude <= Mathf.Max(mySpeed, nearestPixel, stopWithin))
             {
                 if (stopWithin == 0) {
                     target.z = transform.position.z;

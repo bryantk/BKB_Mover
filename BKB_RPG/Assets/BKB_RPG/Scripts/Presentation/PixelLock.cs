@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using System.Collections;
 
 namespace BKB_RPG {
 	[ExecuteInEditMode]
@@ -18,9 +17,10 @@ namespace BKB_RPG {
 
 		// Update is called once per frame
 		void LateUpdate () {
-			Vector3 goal = transform.position;
-			transform.position = SnapTo(transform.position + carry, resolution);
-			carry += (goal - transform.position);
+			Vector3 original = transform.position;
+            Vector3 goal = SnapTo(transform.position + carry, resolution);
+            transform.position = goal;
+            carry += (original - goal);
 		}
 
 		float SnapTo(float source, float resolution) {

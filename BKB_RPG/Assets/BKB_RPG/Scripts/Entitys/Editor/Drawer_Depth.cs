@@ -1,5 +1,5 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿#if UNITY_EDITOR
+using UnityEngine;
 using UnityEditor;
 using BKB_RPG;
 
@@ -19,5 +19,7 @@ public class Drawer_Depth : Editor
 		                                         Vector3.one, Handles.SphereCap);
 		Handles.DrawLine(location - Vector3.right * 2, location + Vector3.right * 2);
 		myScript.yOffset = location.y - myScript.transform.position.y;
+        myScript.DrawDepth();
 	}
 }
+#endif

@@ -10,6 +10,7 @@ namespace BKB_RPG {
         // Divide Y position by this to 'flatten' the z-depth
         const float field_depth = 10f;
         // Number of frames to wait to update a 'mover's z-depth
+        // TODO - make as a compnent of Entity / a Manager - only call update X frames
         const int sleep_frames = 10;
 
         int _sleep = 0;
@@ -32,7 +33,7 @@ namespace BKB_RPG {
 		}
 
 		
-		void DrawDepth() {
+		public void DrawDepth() {
 			Vector3 temp = transform.position;
 			temp.z = (temp.y + yOffset) / field_depth;
 			transform.position = temp;

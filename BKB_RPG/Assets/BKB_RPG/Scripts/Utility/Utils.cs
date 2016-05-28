@@ -100,6 +100,20 @@ namespace BKB_RPG {
 			Gizmos.DrawLine(end, end+t-dir);
 		}
 
+
+        public static float TouchedAt(float myFacing, float targetFacing) {
+            float diff = targetFacing - myFacing;
+            if (diff < 0)
+                diff = 360 + diff;
+            // 0 = Back
+            // 90 = Right Side
+            // 180 = Front
+            // 270 = Left side
+            return diff % 360;
+        }
+
+
+#if UNITY_EDITOR
         public static void DrawArrow(Vector3 start, Vector3 end, Color? color=null) {
             Color old = UnityEditor.Handles.color;
             if (color != null)
@@ -133,17 +147,6 @@ namespace BKB_RPG {
             }
         }
 
-        public static float TouchedAt(float myFacing, float targetFacing) {
-            float diff = targetFacing - myFacing;
-            if (diff < 0)
-                diff = 360 + diff;
-            // 0 = Back
-            // 90 = Right Side
-            // 180 = Front
-            // 270 = Left side
-            return diff % 360;
-        }
-
 
         public static LayerMask LayerMaskField(string label, LayerMask layerMask) {
             //by FlyingOstriche
@@ -175,6 +178,6 @@ namespace BKB_RPG {
             layerMask.value = mask;
             return layerMask;
         }
-
+#endif
     }
 }

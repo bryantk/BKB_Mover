@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿#if UNITY_EDITOR
+using UnityEngine;
 using UnityEditor;
 
 
@@ -25,3 +26,4 @@ public class test_draw : Editor {
     }
 
 }
+#endif

@@ -9,7 +9,7 @@ namespace BKB_RPG {
         NullDelegate tickDelegate;
 
         // TODO - Each and Each with seperate lists?
-        public enum TriggerBehaviour { OnButtonPress, PlayerTouch, EventTouch, Always, Each};
+        public enum TriggerBehaviour { OnButtonPress, PlayerTouch, EventTouch, Always, Each, None};
         public TriggerBehaviour behaviour = TriggerBehaviour.OnButtonPress;
 
         public float rate = 0.25f;
@@ -23,7 +23,8 @@ namespace BKB_RPG {
         public bool Paused;
 
         protected Mover bkb_mover;
-        private Enemy bkb_enemy;
+        [HideInInspector]
+        public Enemy bkb_enemy;
 
         /// <summary>
         /// Poll self for all atached scripts 'entity' manages
@@ -34,13 +35,15 @@ namespace BKB_RPG {
             if (bkb_mover != null)
             {
                 bkb_mover.Setup(this);
-                tickDelegate += bkb_mover.iTick;
+                tickDelegate = bkb_mover.iTick;
             }
         }
 
         public void iTick() {
             if (tickDelegate != null)
                 tickDelegate();
+            if (!Paused && behaviour == TriggerBehaviour.Always)
+                onActivate.Invoke();
         }
 
         #region Pause + Resume
@@ -67,7 +70,7 @@ namespace BKB_RPG {
 
             onActivate.Invoke();
             // TODO - Always do this?
-            if (bkb_enemy != null)
+            if (bkb_enemy != null && hit.GetComponent<Player>() != null)
                 bkb_enemy.Battle(false);
             print("I, " + this.name + ", hit a thing");
         }
@@ -89,6 +92,29 @@ namespace BKB_RPG {
             print("Player activated me, " + this.name);
         }
 
-
+        public void SetTriggerbehaviour(string type="NONE") {
+            switch (type.ToUpper())
+            {
+            default:
+            case "NONE":
+                behaviour = TriggerBehaviour.None;
+                break;
+            case "EVENTTOUCH":
+                behaviour = TriggerBehaviour.EventTouch;
+                break;
+            case "PLAYERTOUCH":
+                behaviour = TriggerBehaviour.PlayerTouch;
+                break;
+            case "ALWAYS":
+                behaviour = TriggerBehaviour.Always;
+                break;
+            case "ONBUTTONPRESS":
+                behaviour = TriggerBehaviour.OnButtonPress;
+                break;
+            case "EACH":
+                behaviour = TriggerBehaviour.Each;
+                break;
+            }
+        }
     }
 }

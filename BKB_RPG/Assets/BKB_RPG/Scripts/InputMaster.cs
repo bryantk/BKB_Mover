@@ -12,17 +12,6 @@ public class InputMaster : MonoBehaviour {
 
     string[] _buttons = new string[] { "Fire1", "Fire2", "Fire3" };
 
-
-    // Use this for initialization
-    void Start () {
-        okButtonEvent += t;
-    }
-	
-    void t() {
-        print("done");
-    }
-
-
 	// Update is called once per frame
 	void Update () {
         int x = _hor.Update();
@@ -37,11 +26,8 @@ public class InputMaster : MonoBehaviour {
 
         for (int i = 0; i < 3; ++i)
         {
-            if (Input.GetButtonUp(_buttons[i]))
-            {
-                if (okButtonEvent != null)
-                    okButtonEvent();
-            }
+            if (Input.GetButtonUp(_buttons[i]) && okButtonEvent != null)
+                okButtonEvent();
         }
     }
 

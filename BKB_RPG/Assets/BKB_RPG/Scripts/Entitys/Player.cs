@@ -7,29 +7,11 @@ namespace BKB_RPG {
         public float actionRate = 0.25f;
         protected float _actionNext;
 
-        public static Player _instance { get; private set; }
-        public virtual void Awake() {
+        void Awake() {
             tag = "Player";
-            if (_instance == null)
-            {
-                _instance = this;
-                DontDestroyOnLoad(this);
-                OnAwake();
-            }
-            else {
-                Debug.LogWarning("MoverMaster already exists, deleting.");
-                Destroy(this.gameObject);
-                return;
-            }
-        }
-
-        void OnDestroy() {
-            if (_instance == this) _instance = null;
-        }
-
-        void OnAwake() {
             rate = 0.25f;
             InputMaster.moveEvent += Move;
+            InputMaster.okButtonEvent += ActionPressed;
         }
 
         public override void OnCollision(Transform hit) {
@@ -41,37 +23,39 @@ namespace BKB_RPG {
                 other.OnPlayerTouched();
         }
 
-        // TODO - move to input manager
-        void Update() {
-            if (bkb_mover.commands.Count > 0)
-                return;
-
-            if (Input.GetKey(KeyCode.E))
-                ActionPressed();
-            /*
-            Vector2 dir = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
-            bkb_mover.moving = false;
-            if (dir.magnitude != 0)
+        void OnTriggerEnter2D(Collider2D other) {
+            // TODO - create 'on player touch' component that directs to cached events
+            if (other.tag == "TP")
             {
-                bkb_mover.moving = true;
-                bkb_mover.SetFacing(BKB_RPG.Utils.Vector2toAngle(dir));
-                bkb_mover.StepTowards((Vector3)dir.normalized + transform.position);
+                Teleporter t = other.GetComponent<Teleporter>();
+                if (t != null)
+                    t.Teleport();
             }
-            */
         }
 
         public void Move(object sender, InfoEventArgs<Vector2> e) {
+            if (Paused)
+                return;
             Vector2 dir = e.info;
-            bkb_mover.moving = false;
             if (dir.magnitude != 0)
             {
                 bkb_mover.moving = true;
-                bkb_mover.SetFacing(BKB_RPG.Utils.Vector2toAngle(dir));
+                bkb_mover.SetAnimation("speed", bkb_mover.animation_rate);
+                bkb_mover.SetFacing(Utils.Vector2toAngle(dir));
                 bkb_mover.StepTowards((Vector3)dir.normalized + transform.position);
             }
+            
+        }
+
+        void LateUpdate() {
+            bkb_mover.SetAnimation("speed", 0);
+            bkb_mover.moving = false;
         }
 
         public void ActionPressed() {
+            print("action!");
+            if (Paused)
+                return;
             if (Time.time < _actionNext)
                 return;
             _actionNext = Time.time + actionRate;

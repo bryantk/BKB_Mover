@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿#if UNITY_EDITOR
+using UnityEngine;
 using UnityEditor;
 using BKB_RPG;
 
@@ -18,3 +19,4 @@ public class Drawer_Player : Editor
         GUILayout.Label("Paused: " + myScript.Paused);
     }
 }
+#endif

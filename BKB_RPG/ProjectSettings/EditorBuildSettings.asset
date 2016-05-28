@@ -4,4 +4,10 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/BKB_RPG/2/main.unity
+  - enabled: 1
+    path: Assets/BKB_RPG/Debug.unity
+  - enabled: 1
+    path: Assets/BKB_RPG/2/test2.unity

@@ -1,7 +1,4 @@
-﻿using UnityEngine;
-using System.Collections;
-
-public interface IPauseable {
+﻿public interface IPauseable {
     void iPause();
     void iResume();
 }
