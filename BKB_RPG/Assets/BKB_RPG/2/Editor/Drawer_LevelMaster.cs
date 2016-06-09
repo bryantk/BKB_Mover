@@ -6,15 +6,12 @@ using BKB_RPG;
 [CustomEditor(typeof(LevelMaster))]
 public class Drawer_LevelMaster : Editor {
     LevelMaster myScript;
-    bool showEntities = false;
     bool showLabels = false;
-    Vector2 EScroll = Vector2.zero;
     Vector2 LScroll = Vector2.zero;
 
     void OnEnable() {
         myScript = target as LevelMaster;
         EditorApplication.hierarchyWindowChanged += ManualUpdate;
-        EScroll = Vector2.zero;
         LScroll = Vector2.zero;
     }
 

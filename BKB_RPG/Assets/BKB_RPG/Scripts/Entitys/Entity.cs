@@ -9,7 +9,7 @@ namespace BKB_RPG {
         NullDelegate tickDelegate;
 
         // TODO - Each and Each with seperate lists?
-        public enum TriggerBehaviour { OnButtonPress, PlayerTouch, EventTouch, Always, Each, None};
+        public enum TriggerBehaviour { OnButtonPress, PlayerTouch, EventTouch, Always, Once, Each, None};
         public TriggerBehaviour behaviour = TriggerBehaviour.OnButtonPress;
 
         public float rate = 0.25f;
@@ -42,8 +42,12 @@ namespace BKB_RPG {
         public void iTick() {
             if (tickDelegate != null)
                 tickDelegate();
-            if (!Paused && behaviour == TriggerBehaviour.Always)
+            if (!Paused && (behaviour == TriggerBehaviour.Always || behaviour == TriggerBehaviour.Once))
+            {
                 onActivate.Invoke();
+                if (behaviour == TriggerBehaviour.Once)
+                    behaviour = TriggerBehaviour.None;
+            }
         }
 
         #region Pause + Resume
@@ -110,6 +114,9 @@ namespace BKB_RPG {
                 break;
             case "ONBUTTONPRESS":
                 behaviour = TriggerBehaviour.OnButtonPress;
+                break;
+            case "ONCE":
+                behaviour = TriggerBehaviour.Once;
                 break;
             case "EACH":
                 behaviour = TriggerBehaviour.Each;

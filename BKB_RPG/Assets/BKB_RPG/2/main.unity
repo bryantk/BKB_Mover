@@ -122,15 +122,7 @@ Prefab:
       objectReference: {fileID: 0}
     - target: {fileID: 458206, guid: bfbdac90aef3cae4b802f4e3e66154ee, type: 2}
       propertyPath: m_RootOrder
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 5832986, guid: bfbdac90aef3cae4b802f4e3e66154ee, type: 2}
-      propertyPath: m_Radius
-      value: 0.35
-      objectReference: {fileID: 0}
-    - target: {fileID: 5832986, guid: bfbdac90aef3cae4b802f4e3e66154ee, type: 2}
-      propertyPath: m_Offset.y
-      value: 0.2
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: bfbdac90aef3cae4b802f4e3e66154ee, type: 2}
@@ -144,6 +136,7 @@ GameObject:
   m_Component:
   - 4: {fileID: 1975407636}
   - 114: {fileID: 1975407637}
+  - 114: {fileID: 1975407638}
   m_Layer: 0
   m_Name: Setup
   m_TagString: Untagged
@@ -169,9 +162,23 @@ MonoBehaviour:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1975407635}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5eb0b10996121514c9ecca4b95019209, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   StartLabel: test2.pizza
+--- !u!114 &1975407638
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1975407635}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d25fb6f4ab932d34da21df667d998c28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mat: {fileID: 2100000, guid: 7624d611bd330e44b80ef65275598a16, type: 2}
+  s: {fileID: 4800000, guid: fabca918ca89c6c42b211ec3299e2998, type: 3}
+  other: {fileID: 2800000, guid: 9847281c7fd00f945b2084a536c4d400, type: 3}

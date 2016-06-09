@@ -30,6 +30,7 @@ GameObject:
   - 92: {fileID: 9253896}
   - 124: {fileID: 12414192}
   - 81: {fileID: 8177910}
+  - 114: {fileID: 11437822}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -254,9 +255,9 @@ CircleCollider2D:
   m_Material: {fileID: 0}
   m_IsTrigger: 0
   m_UsedByEffector: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: 0, y: 0.2}
   serializedVersion: 2
-  m_Radius: 0.5
+  m_Radius: 0.35
 --- !u!81 &8177910
 AudioListener:
   m_ObjectHideFlags: 1
@@ -385,6 +386,18 @@ MonoBehaviour:
   Paused: 0
   bkb_enemy: {fileID: 0}
   actionRate: 0.25
+--- !u!114 &11437822
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 124176}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f91d742f3be083418c26878ab8255c7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  TransitionMaterial: {fileID: 2100000, guid: 7624d611bd330e44b80ef65275598a16, type: 2}
 --- !u!114 &11442908
 MonoBehaviour:
   m_ObjectHideFlags: 1

@@ -89,23 +89,23 @@ namespace BKB_RPG {
         }
 
 
-        public static void Teleport(string levelLabel, float time = 0.25f, Callback callback = null) {
+        public static void Teleport(string levelLabel, Callback callback = null, float time = 0.25f) {
             TPCallback = callback;
             string[] strArray = levelLabel.Split('.');
             if (strArray.Length == 1)
-                Teleport(strArray[0], null, time, callback);
+                Teleport(strArray[0], null, callback, time);
             else if (strArray.Length == 2)
-                Teleport(strArray[1], strArray[0], time, callback);
+                Teleport(strArray[1], strArray[0], callback, time);
             else
                 Debug.LogWarning(string.Format("Level Label '{}' malformed.", levelLabel));
         }
 
-        public static void Teleport(string label, string scene, float time = 0.25f, Callback callback=null) {
+        public static void Teleport(string label, string scene, Callback callback=null, float time = 0.25f) {
             TPCallback = callback;
             _instance.StartCoroutine(_Teleport(Vector3.zero, scene, label, time, time));
         }
 
-        public static void Teleport(Vector3 position, string scene = null, float time = 0.25f, Callback callback = null) {
+        public static void Teleport(Vector3 position, string scene = null, Callback callback = null, float time = 0.25f) {
             TPCallback = callback;
             _instance.StartCoroutine(_Teleport(position, scene, null, time, time));
         }
@@ -207,12 +207,14 @@ namespace BKB_RPG {
             levelData.currentLevel.SetupLevel();
         }
 
-        static IEnumerator _Teleport(Vector3 position, string levelNameToLoad, string label, float timeOut=0.25f, float timeIn=0.25f) {
+        static IEnumerator _Teleport(Vector3 position, string levelNameToLoad, string label, float timeOut = 0.25f, float timeIn = 0.25f) {
             PauseAll();
             // Set state 'teleport'
 
-            FadeOut(timeOut, () => { Complete(); } );
-            yield return _Block();
+            if (timeOut > 0) { 
+                FadeOut(timeOut, () => { Complete(); });
+                yield return _Block();
+            }
 
             if (levelNameToLoad != null && levelNameToLoad != levelData.name)
                 yield return LoadLevel(levelNameToLoad);
@@ -220,9 +222,11 @@ namespace BKB_RPG {
                 position = levelData.currentLevel.GetLabel(label);
             SetPartyPosition(position);
 
-            FadeIn(timeIn, () => { Complete(); });
-            yield return _Block();
-
+            if (timeIn > 0)
+            {
+                FadeIn(timeIn, () => { Complete(); });
+                yield return _Block();
+            }
             ResumeAll();
             if (TPCallback != null)
                 TPCallback();
