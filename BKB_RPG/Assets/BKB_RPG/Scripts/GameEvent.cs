@@ -8,6 +8,7 @@ namespace BKB_RPG {
 
         [SerializeField]
         public List<GameEventCommand> commands;
+        public bool runGlobaly = false;
 
         Callback callback;
         Coroutine coroutine = null;
@@ -40,8 +41,10 @@ namespace BKB_RPG {
                 return;
             }
             callback = onComplete;
-            //coroutine = StartCoroutine(_Run());
-            coroutine = GameMaster._instance.StartCoroutine(_Run());
+            if (runGlobaly)
+                coroutine = GameMaster.RunCoroutine(_Run());
+            else
+                coroutine = StartCoroutine(_Run());
         }
 
         public IEnumerator _Run() {

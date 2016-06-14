@@ -16,6 +16,7 @@ namespace BKB_RPG {
 
         public int int_1;               // GoTO, shake
         public float float_1;           // wait, shake
+        public float float_2;           // wait
         public string string_1;         // TP, label
         public Transform transform_1;
         public Vector3 vector3_1;       // TP, shake
@@ -156,7 +157,10 @@ namespace BKB_RPG {
                 yield return RunUnPauase();
                 break;
             case CommandTypes.Wait:
-                yield return new WaitForSeconds(float_1);
+                float time = float_1;
+                if (executionType == 1)
+                    time = Random.Range(float_2, float_1);
+                yield return new WaitForSeconds(time);
                 break;
             case CommandTypes.Script:
                 scriptCalls.Invoke();

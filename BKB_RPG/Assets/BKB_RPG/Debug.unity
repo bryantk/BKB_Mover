@@ -6008,11 +6008,11 @@ Prefab:
       objectReference: {fileID: 0}
     - target: {fileID: 417096, guid: bfbdac90aef3cae4b802f4e3e66154ee, type: 2}
       propertyPath: m_LocalPosition.x
-      value: -0.0052547455
+      value: 16.307245
       objectReference: {fileID: 0}
     - target: {fileID: 417096, guid: bfbdac90aef3cae4b802f4e3e66154ee, type: 2}
       propertyPath: m_LocalPosition.y
-      value: 0.0016851425
+      value: -6.685815
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: bfbdac90aef3cae4b802f4e3e66154ee, type: 2}

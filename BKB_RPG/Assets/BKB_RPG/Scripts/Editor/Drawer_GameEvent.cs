@@ -32,6 +32,7 @@ public class Drawer_GameEvent : Editor {
         serializedObject.Update();
         EditorGUILayout.PropertyField(serializedObject.FindProperty("m_Script"),
             true, new GUILayoutOption[0]);
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("runGlobaly"), new GUIContent("Global?"));
         tabLevel = 0;
         list.DoLayoutList();
 
@@ -173,6 +174,7 @@ public class Drawer_GameEvent : Editor {
         //------------------------------------------------------------------------------------------------------
         // TODO - move all names/tooltips to definitions file?
         float tabedWidth = rect.width - tabLevel * tabAmount;
+        Rect rect2;
         switch (command.CommandID)
         {
         case GameEventCommand.CommandTypes.Label:
@@ -191,8 +193,22 @@ public class Drawer_GameEvent : Editor {
             break;
         case GameEventCommand.CommandTypes.Wait:
             rect.x += 120;
-            EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight),
-                                    element.FindPropertyRelative("float_1"), new GUIContent("for seconds"));
+            rect2 = rect;
+            rect2.width = 70;
+            command.executionType = EditorGUI.IntPopup(rect2, command.executionType,
+                new string[] { "For", "Random" }, new int[] { 0, 1 });
+            if (command.executionType == 0)
+                EditorGUI.PropertyField(new Rect(rect.x + 80, rect.y, tabedWidth - 200, EditorGUIUtility.singleLineHeight),
+                                      element.FindPropertyRelative("float_1"), new GUIContent(""));
+            else
+            {
+                EditorGUI.PropertyField(new Rect(rect.x + 80, rect.y, tabedWidth - 250, EditorGUIUtility.singleLineHeight),
+                                      element.FindPropertyRelative("float_2"), new GUIContent(""));
+                EditorGUI.PropertyField(new Rect(rect.x + 130, rect.y, tabedWidth - 250, EditorGUIUtility.singleLineHeight),
+                                      element.FindPropertyRelative("float_1"), new GUIContent(""));
+                command.float_2 = Mathf.Clamp(command.float_2, 0, command.float_1);
+                command.float_1 = Mathf.Max(command.float_1, 0);
+            }
             command.float_1 = Mathf.Clamp(command.float_1, 0, Mathf.Infinity);
             break;
         case GameEventCommand.CommandTypes.Script:
@@ -202,10 +218,17 @@ public class Drawer_GameEvent : Editor {
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth, EditorGUIUtility.singleLineHeight),
                                     element.FindPropertyRelative("scriptCalls"), GUIContent.none);
             break;
+        case GameEventCommand.CommandTypes.Pause:
+            rect.x += 120;
+            rect2 = rect;
+            rect2.width = tabedWidth - 120;
+            command.executionType = EditorGUI.IntPopup(rect2, command.executionType,
+                new string[] { "All", "NPCs", "Player", "Enemies"}, new int[] { 0, 1, 2, 3 });
+            break;
         case GameEventCommand.CommandTypes.Teleport:
             rect.x += 120;
-            Rect rect2 = rect;
-            rect2.width = 150;
+            rect2 = rect;
+            rect2.width = tabedWidth - 120;
             command.executionType = EditorGUI.IntPopup(rect2, command.executionType,
                 new string[] { "By Label", "By Absolute" }, new int[] { 0, 1 }); 
 

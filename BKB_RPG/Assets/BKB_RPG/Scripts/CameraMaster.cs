@@ -5,7 +5,7 @@ public class CameraMaster : MonoBehaviour {
     public Transform target;
 
     public Shaker shaker;
-    public TintFader tintFader;
+    public SimpleBlit tintFader;
     // shaker script
     // tint
     // some weather

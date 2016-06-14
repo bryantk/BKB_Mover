@@ -30,9 +30,7 @@ namespace BKB_RPG {
 
         // callbacks
         static Callback TPCallback;
-
-        static bool isBlocking = false;
-
+   
 
         public virtual void Awake() {
             if (_instance == null)
@@ -74,11 +72,15 @@ namespace BKB_RPG {
         }
 
 
+        static public Coroutine RunCoroutine(IEnumerator co) {
+            Coroutine coroutine = GameMaster._instance.StartCoroutine(co);
+            return coroutine;
+        }
+
         static public Transform GetPlayerTransform(int position = 0) {
             // TODO - offset position for other party memebers
             return _instance.playerData.gameObject.transform;
         }
-
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
         // Commands
@@ -210,10 +212,13 @@ namespace BKB_RPG {
         static IEnumerator _Teleport(Vector3 position, string levelNameToLoad, string label, float timeOut = 0.25f, float timeIn = 0.25f) {
             PauseAll();
             // Set state 'teleport'
+            bool wait = true;
 
-            if (timeOut > 0) { 
-                FadeOut(timeOut, () => { Complete(); });
-                yield return _Block();
+            if (timeOut > 0)
+            { 
+                FadeOut(timeOut, () => { wait = false; });
+                while (wait)
+                    yield return null;
             }
 
             if (levelNameToLoad != null && levelNameToLoad != levelData.name)
@@ -224,25 +229,16 @@ namespace BKB_RPG {
 
             if (timeIn > 0)
             {
-                FadeIn(timeIn, () => { Complete(); });
-                yield return _Block();
+                wait = true;
+                FadeIn(timeIn, () => { wait = false; });
+                while (wait)
+                    yield return null;
             }
             ResumeAll();
             if (TPCallback != null)
                 TPCallback();
         }
  
-
-        static IEnumerator _Block(bool shouldBlock=true) {
-            isBlocking = shouldBlock;
-            while (isBlocking)
-                yield return null;
-            isBlocking = false;
-        }
-
-        static void Complete() {
-            isBlocking = false;
-        }
 
     }
 }
