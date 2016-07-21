@@ -145,61 +145,11 @@ namespace BKB_RPG {
             _instance.entityMaster.ResumeEnemies();
         }
 
-        // Reparent Camera
-        public static void ReParentCamera(Transform target) {
-            _instance.mainCamera.ReParent(target);
-        }
-
-        // Shaker
-        public static void SetRotationScale(Vector3 rotation_Scale) {
-            _instance.mainCamera.SetRotationScale(rotation_Scale);
-        }
-
-        public static void SetShakeScale(Vector3 scale) {
-            _instance.mainCamera.SetShakeScale(scale);
-        }
-
-        public static void Shake(int power, float duration, Callback callback=null) {
-            _instance.mainCamera.Shake(power, duration, callback);
-        }
-
-        public static void Shake(int power, float duration, Vector3 scale, Callback callback=null) {
-            _instance.mainCamera.SetShakeScale(scale);
-            Shake(power, duration, callback);
-        }
-
-        public static void Shake(int power, float duration, Vector3 scale, Vector3 rotation_Scale, Callback callback=null) {
-            _instance.mainCamera.SetShakeScale(scale);
-            _instance.mainCamera.SetRotationScale(rotation_Scale);
-            Shake(power, duration, callback);
-        }
-
-        // Tint
-        public static void Tint(Color toColor, float time = 0, Callback callback=null) {
-            _instance.mainCamera.tintFader.Tint(toColor, time, callback);
-        }
-
-        public static void Tint(Color fromColor, Color toColor, float time = 0, Callback callback=null) {
-            _instance.mainCamera.tintFader.Tint(fromColor, toColor, time, callback);
-        }
-
-        public static void TintFromCurrent(Color toColor, float time = 0, Callback callback=null) {
-            _instance.mainCamera.tintFader.TintFromCurrent(toColor, time, callback);
-        }
-
-        public static void FadeOut(float time, Callback callback=null) {
-            Tint(Color.black, time, callback);
-        }
-
-        public static void FadeIn(float time, Callback callback = null) {
-            TintFromCurrent(Color.clear, time, callback);
-        }
-
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
         // Helpers
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
         static IEnumerator LoadLevel(string levelNameToLoad) {
-            ReParentCamera(_instance.playerData.gameObject.transform);
+            _instance.mainCamera.ReParent(_instance.playerData.gameObject.transform);
             var loading = SceneManager.LoadSceneAsync(levelNameToLoad);
             // Set FSM = Loading
             yield return loading;
@@ -215,8 +165,8 @@ namespace BKB_RPG {
             bool wait = true;
 
             if (timeOut > 0)
-            { 
-                FadeOut(timeOut, () => { wait = false; });
+            {
+                _instance.mainCamera.FadeOut(timeOut, () => { wait = false; });
                 while (wait)
                     yield return null;
             }
@@ -230,7 +180,7 @@ namespace BKB_RPG {
             if (timeIn > 0)
             {
                 wait = true;
-                FadeIn(timeIn, () => { wait = false; });
+                _instance.mainCamera.FadeIn(timeIn, () => { wait = false; });
                 while (wait)
                     yield return null;
             }

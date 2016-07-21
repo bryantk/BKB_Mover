@@ -148,6 +148,7 @@ MonoBehaviour:
       PublicKeyToken=null
   Processing: 0
   Paused: 0
+  bkb_enemy: {fileID: 0}
   actionRate: 0.25
 --- !u!114 &11418354
 MonoBehaviour:

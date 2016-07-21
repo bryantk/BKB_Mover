@@ -6,7 +6,7 @@ namespace BKB_RPG {
     [System.Serializable]
     public class GameEventCommand {
 
-        public enum CommandTypes { Teleport=1, Pause, UnPause, Wait, Script, Label, GoTo, If, Else, EndIf, Shake };
+        public enum CommandTypes { Teleport=1, Pause, UnPause, Wait, Script, Label, GoTo, If, Else, EndIf, Shake, Tint, Transition };
 
         public CommandTypes CommandID;
         public bool Block = false;
@@ -21,7 +21,10 @@ namespace BKB_RPG {
         public Transform transform_1;
         public Vector3 vector3_1;       // TP, shake
         public Vector3 vector3_2;       // shake
-        public bool instant;            // TP
+        public Color color;
+        public Gradient gradient;
+        public Texture texture;
+        public bool bool_1;            // TP
 
         // SCRIPT
         public UnityEvent scriptCalls;
@@ -52,6 +55,12 @@ namespace BKB_RPG {
             case CommandTypes.Teleport:
                 TeleportCommand();
                 break;
+            case CommandTypes.Tint:
+                TintCommand();
+                break;
+            case CommandTypes.Transition:
+                TransitionCommand();
+                break;
             case CommandTypes.Label:
                 LabelCommand();
                 break;
@@ -79,15 +88,28 @@ namespace BKB_RPG {
             executionType = 0;
             string_1 = "";
             vector3_1 = Vector3.zero;
-            instant = false;
+            bool_1 = false;
         }
 
         public void TintCommand() {
-
+            CommandID = CommandTypes.Tint;
+            Block = true;
+            lines = 3;
+            float_1 = 1;    //time
+            executionType = 0;      //type: toColor, gradient
+            color = Color.black;
+            gradient = new Gradient();
         }
 
         public void TransitionCommand() {
-
+            CommandID = CommandTypes.Transition;
+            Block = true;
+            bool_1 = false;
+            lines = 5;
+            color = Color.black;
+            float_1 = 1;    //time
+            executionType = 0;      //type: fade in, fade out
+            texture = null;
         }
 
         public void LabelCommand() {
@@ -151,10 +173,10 @@ namespace BKB_RPG {
             switch (CommandID)
             {
             case CommandTypes.Pause:
-                yield return RunPauase();
+                yield return RunPause();
                 break;
             case CommandTypes.UnPause:
-                yield return RunUnPauase();
+                yield return RunUnPause();
                 break;
             case CommandTypes.Wait:
                 float time = float_1;
@@ -171,6 +193,12 @@ namespace BKB_RPG {
             case CommandTypes.Shake:
                 yield return RunShakeCommand();
                 break;
+            case CommandTypes.Tint:
+                yield return RunTint();
+                break;
+            case CommandTypes.Transition:
+                yield return RunTransition();
+                break;
             case CommandTypes.Label:
             case CommandTypes.GoTo:
             default:
@@ -179,9 +207,10 @@ namespace BKB_RPG {
             yield break;
         }
 
+        // TO DO - allow transition to be prepared to use
         private IEnumerator RunTeleport() {
             bool waiting = true;
-            float fade = instant ? 0 : 0.25f;
+            float fade = bool_1 ? 0 : 0.25f;
             string_1 = string_1 != "" ? string_1 : null;
             if (executionType == 0)
                 GameMaster.Teleport(string_1, () => { waiting = false; }, fade);
@@ -191,7 +220,27 @@ namespace BKB_RPG {
                 yield return null;
         }
 
-        private IEnumerator RunPauase() {
+        private IEnumerator RunTint() {
+            bool waiting = true;
+            if (executionType == 0)
+                GameMaster._instance.mainCamera.tintFader.Tint(color, float_1, () => { waiting = false; });
+            else
+                GameMaster._instance.mainCamera.tintFader.Tint(gradient, float_1, () => { waiting = false; });
+            while (waiting)
+                yield return null;
+        }
+
+        private IEnumerator RunTransition() {
+            bool waiting = true;
+            if (executionType == 0)
+                GameMaster._instance.mainCamera.tintFader.FadeOut(float_1, bool_1, color, texture, () => { waiting = false; });
+            else
+                GameMaster._instance.mainCamera.tintFader.FadeIn(float_1, bool_1, texture, () => { waiting = false; });
+            while (waiting)
+                yield return null;
+        }
+
+        private IEnumerator RunPause() {
             switch (executionType)
             {
             case 0:     // Pause all
@@ -210,7 +259,7 @@ namespace BKB_RPG {
             yield break;
         }
 
-        private IEnumerator RunUnPauase() {
+        private IEnumerator RunUnPause() {
             switch (executionType)
             {
             case 0:     // Pause all
@@ -230,12 +279,15 @@ namespace BKB_RPG {
         }
 
         private IEnumerator RunShakeCommand() {
-            GameMaster.SetRotationScale(vector3_2);
-            GameMaster.Shake(int_1, float_1, vector3_1);
+            GameMaster ga = GameMaster._instance;
+            ga.mainCamera.SetRotationScale(vector3_2);
+            ga.mainCamera.Shake(int_1, float_1, vector3_1);
             if (Block)
                 yield return new WaitForSeconds(float_1);
             yield break;
         }
+
+
 
     }
 }

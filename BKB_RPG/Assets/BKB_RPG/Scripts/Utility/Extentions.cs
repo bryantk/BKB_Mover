@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 
 public static class DictionaryExtensions {
-    public static TValue GetValueOrDefault<TKey, TValue>(this Dictionary<TKey, TValue> dict,
+    public static TValue GetOrDefault<TKey, TValue>(this Dictionary<TKey, TValue> dict,
         TKey key, TValue defaultIfNotFound = default(TValue))
     {
         TValue value;

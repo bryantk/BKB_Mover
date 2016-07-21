@@ -54,7 +54,7 @@ public class Shaker : MonoBehaviour {
         SetOrigin();
         float speed = shakeSpeed / 200f;
         // Start on a 0.5f value (center) for smooth transition into shaking.
-        Vector2 noise = new Vector2(Random.value * 10, Random.value * 100);
+        Vector2 noise = new Vector2((2*Random.value-1) * 10, (2 * Random.value - 1) * 100);
         float factor = Mathf.PerlinNoise(noise.x, noise.y);
         while (factor > 0.525f || factor < 0.475f)
         {
@@ -72,9 +72,9 @@ public class Shaker : MonoBehaviour {
             if (PositionScale.x != 0)
                 offset.x = (Mathf.PerlinNoise(noise.x + step, noise.y) * 2f - 1f) * PositionScale.x;
             if (PositionScale.y != 0)
-                offset.y = (Mathf.PerlinNoise(noise.x + step * 0.41f, noise.y + step * 0.41f) * 2f - 1f) * PositionScale.y;
+                offset.y = (Mathf.PerlinNoise(noise.x, noise.y + step) * 2f - 1f) * PositionScale.y;
             if (PositionScale.z != 0)
-                offset.z = (Mathf.PerlinNoise(noise.x, noise.y + step) * 2f - 1f) * PositionScale.z;
+                offset.z = (Mathf.PerlinNoise(noise.x + step * 0.41f, noise.y + step * 0.41f) * 2f - 1f) * PositionScale.z;
             if (RotationScale.x != 0)
                 q.x = (Mathf.PerlinNoise(noise.x - step, noise.y) * 2f - 1f) * RotationScale.x;
             if (RotationScale.y != 0)

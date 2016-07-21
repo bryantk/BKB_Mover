@@ -191,6 +191,7 @@ public class Drawer_GameEvent : Editor {
                                     element.FindPropertyRelative("int_1"), new GUIContent("Command"));
             command.int_1 = Mathf.Clamp(command.int_1, 0, myScript.commands.Count - 1);
             break;
+
         case GameEventCommand.CommandTypes.Wait:
             rect.x += 120;
             rect2 = rect;
@@ -211,6 +212,7 @@ public class Drawer_GameEvent : Editor {
             }
             command.float_1 = Mathf.Clamp(command.float_1, 0, Mathf.Infinity);
             break;
+
         case GameEventCommand.CommandTypes.Script:
             if (!command.expanded)
                 return;
@@ -218,6 +220,7 @@ public class Drawer_GameEvent : Editor {
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth, EditorGUIUtility.singleLineHeight),
                                     element.FindPropertyRelative("scriptCalls"), GUIContent.none);
             break;
+
         case GameEventCommand.CommandTypes.Pause:
             rect.x += 120;
             rect2 = rect;
@@ -225,6 +228,7 @@ public class Drawer_GameEvent : Editor {
             command.executionType = EditorGUI.IntPopup(rect2, command.executionType,
                 new string[] { "All", "NPCs", "Player", "Enemies"}, new int[] { 0, 1, 2, 3 });
             break;
+
         case GameEventCommand.CommandTypes.Teleport:
             rect.x += 120;
             rect2 = rect;
@@ -250,8 +254,9 @@ public class Drawer_GameEvent : Editor {
                                     element.FindPropertyRelative("string_1"), new GUIContent("Label.Map(optional)"));
             rect.y += EditorGUIUtility.singleLineHeight + 3;
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, 150, EditorGUIUtility.singleLineHeight),
-                                    element.FindPropertyRelative("instant"), new GUIContent("Instant?"));
+                                    element.FindPropertyRelative("bool_1"), new GUIContent("Instant?"));
             break;
+
         case GameEventCommand.CommandTypes.Shake:
             rect.x += 120;
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, 200, EditorGUIUtility.singleLineHeight),
@@ -266,12 +271,77 @@ public class Drawer_GameEvent : Editor {
             command.int_1 = EditorGUI.IntField(new Rect(rect.x, rect.y, 200, EditorGUIUtility.singleLineHeight),
                                 "Power", command.int_1);
             rect.y += EditorGUIUtility.singleLineHeight + 3;
-            EditorGUI.PropertyField(new Rect(rect.x, rect.y, 200, EditorGUIUtility.singleLineHeight),
-                                    element.FindPropertyRelative("vector3_1"), new GUIContent(""));
+            EditorGUI.PropertyField(new Rect(rect.x, rect.y, rect.width - 25, EditorGUIUtility.singleLineHeight),
+                                    element.FindPropertyRelative("vector3_1"), new GUIContent("Scale"));
             rect.y += EditorGUIUtility.singleLineHeight + 3;
-            EditorGUI.PropertyField(new Rect(rect.x, rect.y, 200, EditorGUIUtility.singleLineHeight),
-                                    element.FindPropertyRelative("vector3_2"), new GUIContent(""));
+            command.lines = 5;
+            if (tabedWidth < 288)
+            {
+                rect.y += EditorGUIUtility.singleLineHeight + 3;
+                command.lines = 7;
+            }
+            EditorGUI.PropertyField(new Rect(rect.x, rect.y, rect.width - 25, EditorGUIUtility.singleLineHeight),
+                                    element.FindPropertyRelative("vector3_2"), new GUIContent("Rotation"));
             break;
+
+        case GameEventCommand.CommandTypes.Tint:
+            rect.x += 120;
+            EditorGUI.PropertyField(new Rect(rect.x, rect.y, 200, EditorGUIUtility.singleLineHeight),
+                                    element.FindPropertyRelative("Block"), new GUIContent("Block:"));
+            if (!command.expanded)
+                return;
+            rect.x -= 120;
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+            tabedWidth -= 50;
+            EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth, EditorGUIUtility.singleLineHeight),
+                                    element.FindPropertyRelative("float_1"), new GUIContent("Time"));
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+            rect2 = rect;
+            rect2.width = 80;
+            command.executionType = EditorGUI.IntPopup(rect2, command.executionType,
+                new string[] { "Color", "Gradient"}, new int[] { 0, 1 });
+            rect.x += 120;
+            switch (command.executionType)
+            {
+            case 0:
+                EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth-120, EditorGUIUtility.singleLineHeight),
+                                    element.FindPropertyRelative("color"), new GUIContent(""));
+                break;
+            case 1:
+                EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth-120, EditorGUIUtility.singleLineHeight),
+                                    element.FindPropertyRelative("gradient"), new GUIContent(""));
+                break;
+            }
+            break;
+
+        case GameEventCommand.CommandTypes.Transition:
+            rect.x += 120;
+            EditorGUI.PropertyField(new Rect(rect.x, rect.y, 200, EditorGUIUtility.singleLineHeight),
+                                    element.FindPropertyRelative("Block"), new GUIContent("Block:"));
+            if (!command.expanded)
+                return;
+            rect.x -= 120;
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+            tabedWidth -= 50;
+            EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth, EditorGUIUtility.singleLineHeight),
+                                    element.FindPropertyRelative("float_1"), new GUIContent("Time"));
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+            EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth - 50, EditorGUIUtility.singleLineHeight),
+                                    element.FindPropertyRelative("bool_1"), new GUIContent("Distort"));
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+            rect2 = rect;
+            rect2.width = 80;
+            command.executionType = EditorGUI.IntPopup(rect2, command.executionType,
+                new string[] { "Fade Out", "Fade In" }, new int[] { 0, 1 });
+            if (command.executionType == 0)
+                EditorGUI.PropertyField(new Rect(rect.x + 120, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight),
+                                        element.FindPropertyRelative("color"), new GUIContent(""));
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+            EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth, EditorGUIUtility.singleLineHeight),
+                                    element.FindPropertyRelative("texture"), new GUIContent("Optional"));
+            break;
+
+
         }
     }
 
