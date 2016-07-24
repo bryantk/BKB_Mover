@@ -177,6 +177,7 @@ public class Drawer_GameEvent : Editor {
         Rect rect2;
         switch (command.CommandID)
         {
+        case GameEventCommand.CommandTypes.Debug:
         case GameEventCommand.CommandTypes.Label:
             rect.x += 120;
             Rect r = new Rect(rect.x, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight);
@@ -185,6 +186,7 @@ public class Drawer_GameEvent : Editor {
             command.string_1 = EditorGUI.TextArea(r, command.string_1);
             command.lines = command.string_1.Split('\n').Length;
             break;
+
         case GameEventCommand.CommandTypes.GoTo:
             rect.x += 120;
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight),
@@ -341,6 +343,27 @@ public class Drawer_GameEvent : Editor {
                                     element.FindPropertyRelative("texture"), new GUIContent("Optional"));
             break;
 
+        case GameEventCommand.CommandTypes.Letterbox:
+            rect.x += 120;
+            EditorGUI.PropertyField(new Rect(rect.x, rect.y, 200, EditorGUIUtility.singleLineHeight),
+                                    element.FindPropertyRelative("Block"), new GUIContent("Block:"));
+            if (!command.expanded)
+                return;
+            rect.x -= 120;
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+            tabedWidth -= 50;
+            EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth, EditorGUIUtility.singleLineHeight),
+                                    element.FindPropertyRelative("float_1"), new GUIContent("Time"));
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+            rect2 = rect;
+            rect2.width = 80;
+            command.executionType = EditorGUI.IntPopup(rect2, command.executionType,
+                new string[] { "Show", "Hide" }, new int[] { 0, 1 });
+            if (command.executionType == 0)
+                EditorGUI.PropertyField(new Rect(rect.x + 120, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight),
+                                        element.FindPropertyRelative("float_2"), new GUIContent(""));
+ 
+            break;
 
         }
     }

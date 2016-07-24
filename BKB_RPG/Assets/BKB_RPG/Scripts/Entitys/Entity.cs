@@ -70,7 +70,7 @@ namespace BKB_RPG {
             if (Time.time < _next)
                 return;
             _next = Time.time + rate;
-            Entity other = hit.GetComponent<Entity>();
+            //Entity other = hit.GetComponent<Entity>();
 
             onActivate.Invoke();
             // TODO - Always do this?

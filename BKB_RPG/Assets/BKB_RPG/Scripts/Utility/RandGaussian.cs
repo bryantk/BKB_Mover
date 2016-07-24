@@ -8,7 +8,7 @@ public class RandGaussian {
 
     public RandGaussian(int seed=0) {
         this.seed = seed;
-        rand = new System.Random(seed);
+        rand = new System.Random(this.seed);
     }
 
     public float Next() {

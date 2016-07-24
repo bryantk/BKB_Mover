@@ -14,11 +14,9 @@ public class Drawer_Mover : Editor
 
     //important
     Mover myScript;
-    EntityMaster masterMover;
 
     // settings
     GUIStyle style;
-    float buttonWidth = 80;
     string json;
     HashSet<int> selected = new HashSet<int>();
 
@@ -50,7 +48,6 @@ public class Drawer_Mover : Editor
 		}
 		if (master_count > 1)
 			Debug.LogWarning(master_count.ToString() + " MoverMasters found, should be 1.");
-		masterMover = FindObjectOfType<EntityMaster>();
 		if (myScript.commands == null) {
             Debug.LogWarning("Created command list");
             myScript.commands = new List<MovementCommand>();

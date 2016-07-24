@@ -42,12 +42,13 @@ namespace BKB_RPG {
             }
             callback = onComplete;
             if (runGlobaly)
-                coroutine = GameMaster.RunCoroutine(_Run());
+                coroutine = GameMaster._instance.StartCoroutine(_Run());
             else
                 coroutine = StartCoroutine(_Run());
         }
 
         public IEnumerator _Run() {
+            GameEvent gameEventObject = runGlobaly ? null : this;
             for (int i = 0; i < commands.Count; i++) {
                 // Run commands. Add case for editor/control related commands
                 switch(commands[i].CommandID) {
@@ -63,8 +64,11 @@ namespace BKB_RPG {
                 case GameEventCommand.CommandTypes.Else:
                     Run_Else(ref i);
                     break;
+                case GameEventCommand.CommandTypes.Debug:
+                    Debug.Log(name + ": " + commands[i].string_1 + "\n@" + Time.time);
+                    break;
                 default:
-                    yield return commands[i].Execute();
+                    yield return commands[i].Execute(gameEventObject);
                     break; 
                 }
             }

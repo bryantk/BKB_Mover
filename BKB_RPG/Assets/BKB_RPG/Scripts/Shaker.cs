@@ -20,18 +20,23 @@ public class Shaker : MonoBehaviour {
     /// <summary>
     /// Shake at POWER for DURATION seconds. Multiple calls will yield most recent only.
     /// </summary>
-    /// <param name="power">How violent to shake (0-50)</param>
     /// <param name="duration">Duration of shaking</param>
-    public void Shake(int power, float duration, Callback callback=null) {
+    /// <param name="strength">Optional. How violent to shake (0-50). Defaults to previous used Strength.</param>
+    public IEnumerator Shake(float duration, int strength = 0, Vector3? scale = null, Vector3? rotation_Scale = null, Callback callback = null) {
         this.callback = callback;
+        if (scale != null)
+            PositionScale = scale.Value;
+        if (rotation_Scale != null)
+            RotationScale = rotation_Scale.Value;
         if (co != null)
         {
             StopCoroutine(co);
             RevertOrigin();
         }
-        shakeSpeed = power;
-        co = StartCoroutine(DoShake(duration));
+        shakeSpeed = strength > 0 ? strength : shakeSpeed;
+        yield return DoShake(duration);
     }
+
 
     /// <summary>
     /// Set current position and rotation as 'origin'

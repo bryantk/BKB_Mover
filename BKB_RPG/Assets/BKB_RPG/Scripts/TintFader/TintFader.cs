@@ -14,7 +14,9 @@ public class TintFader : MonoBehaviour
     Coroutine coroutineTransition = null;
     Callback callbackLetterBox;
     Coroutine coroutineLetterBox = null;
+
     Color currentColor = Color.clear;
+    float letterboxCurrentCutoff;
 
     void OnRenderImage(RenderTexture src, RenderTexture dst) {
         if (TransitionMaterialTint != null && TransitionMaterialTint.GetFloat("_Cutoff") != 0)
@@ -37,11 +39,12 @@ public class TintFader : MonoBehaviour
     /// <param name="time">Duration in Seconds to apply the letterbox.</param>
     /// <param name="maxCutoff"></param>
     /// <param name="callback"></param>
-    public void LetterBox(bool enabled=true, float time=0, Callback callback = null, float maxCutoff = 0.213f) {
+    public IEnumerator LetterBox(bool enabled=true, float time=0, Callback callback = null, float maxCutoff = 0.213f) {
         callbackLetterBox = callback;
         if (coroutineLetterBox != null)
             StopCoroutine(coroutineLetterBox);
         coroutineLetterBox = StartCoroutine(_Letterbox(enabled, time, maxCutoff));
+        yield return new WaitForSeconds(time);
     }
     
 
@@ -51,7 +54,7 @@ public class TintFader : MonoBehaviour
     /// <param name="time">Duration of fade in seconds.</param>
     /// <param name="t">Optional: Texture to use for wipe.</param>
     /// <param name="callback"></param>
-    public void FadeOut(float time, bool distort = false, Color? color = null, Texture t = null, Callback callback = null) {
+    public IEnumerator FadeOut(float time, bool distort = false, Color? color = null, Texture t = null, Callback callback = null) {
         callbackTransition = callback;
         if (coroutineTransition != null)
             StopCoroutine(coroutineTransition);
@@ -60,6 +63,7 @@ public class TintFader : MonoBehaviour
             coroutineTransition = StartCoroutine(_Transition(true, time, distort, 1, t, color));
         else
             coroutineTransition = StartCoroutine(_Tint(_2Tone(Color.clear, fadeColor), time, TransitionMaterial));
+        yield return new WaitForSeconds(time);
     }
 
     /// <summary>
@@ -68,43 +72,12 @@ public class TintFader : MonoBehaviour
     /// <param name="time">Duration of fade in seconds.</param>
     /// <param name="t">Optional: Texture to use for wipe.</param>
     /// <param name="callback"></param>
-    public void FadeIn(float time, bool distort=false, Texture t = null, Callback callback = null) {
+    public IEnumerator FadeIn(float time, bool distort=false, Texture t = null, Callback callback = null) {
         callbackTransition = callback;
         if (coroutineTransition != null)
             StopCoroutine(coroutineTransition);
         coroutineTransition = StartCoroutine(_Transition(false, time, distort, t: t));
-  
-    }
-
-    // TODO - Does this have a purpose?
-
-    /// <summary>
-    /// Tint, with options to change texture
-    /// </summary>
-    /// <param name="time"></param>
-    /// <param name="fadeOut"></param>
-    /// <param name="fade"></param>
-    /// <param name="t"></param>
-    /// <param name="color"></param>
-    /// <param name="callback"></param>
-    public void Transition(float time = 1, bool fadeOut=true, float fade=1, Texture t = null, Color? color=null, bool distort = false, Callback callback = null) {
-        callbackTransition = callback;
-        if (coroutineTransition != null)
-            StopCoroutine(coroutineTransition);
-        coroutineTransition = StartCoroutine(_Transition(fadeOut, time, false, fade, t, color));
-    }
-
-    /// <summary>
-    /// Wipe to clear, then tint to 'toColor' over 'time' seconds.
-    /// </summary>
-    /// <param name="toColor">Target color</param>
-    /// <param name="time">Transition over 'X' seconds</param>
-    /// <param name="callback"></param>
-    public void TintForced(Color toColor, float time = 0, bool distort=false, Callback callback = null) {
-        callbackTint = callback;
-        if (coroutineTint != null)
-            StopCoroutine(coroutineTint);
-        coroutineTint = StartCoroutine(_Tint(_2Tone(toColor), time));
+        yield return new WaitForSeconds(time);
     }
 
     /// <summary>
@@ -114,11 +87,12 @@ public class TintFader : MonoBehaviour
     /// <param name="toColor">Target color</param>
     /// <param name="time">Transition over 'X' seconds</param>
     /// <param name="callback"></param>
-    public void Tint(Color fromColor, Color toColor, float time = 0, Callback callback = null) {
+    public IEnumerator Tint(Color fromColor, Color toColor, float time = 0, Callback callback = null) {
         callbackTint = callback;
         if (coroutineTint != null)
             StopCoroutine(coroutineTint);
-        coroutineTint = StartCoroutine(_Tint(_2Tone(fromColor, toColor), time));
+        //coroutineTint = StartCoroutine(_Tint(_2Tone(fromColor, toColor), time));
+        yield return _Tint(_2Tone(fromColor, toColor), time);
     }
 
     /// <summary>
@@ -127,11 +101,13 @@ public class TintFader : MonoBehaviour
     /// <param name="toColor">Target color</param>
     /// <param name="time">Transition over 'X' seconds</param>
     /// <param name="callback"></param>
-    public void Tint(Color toColor, float time = 0, Callback callback = null) {
+    public IEnumerator Tint(Color toColor, float time = 0, Callback callback = null) {
         callbackTint = callback;
         if (coroutineTint != null)
             StopCoroutine(coroutineTint);
+        // coroutineTint = StartCoroutine(_Tint(_2Tone(currentColor, toColor), time));
         coroutineTint = StartCoroutine(_Tint(_2Tone(currentColor, toColor), time));
+        yield return new WaitForSeconds(time);
     }
 
     /// <summary>
@@ -140,11 +116,13 @@ public class TintFader : MonoBehaviour
     /// <param name="g">Gradient for color tint. (Start with alpha 0 usualy)</param>
     /// <param name="time">Transition over 'X' seconds</param>
     /// <param name="callback"></param>
-    public void Tint(Gradient g, float time = 0, Callback callback = null) {
+    public IEnumerator Tint(Gradient g, float time = 0, Callback callback = null) {
         callbackTint = callback;
         if (coroutineTint != null)
             StopCoroutine(coroutineTint);
+        //coroutineTint = StartCoroutine(_Tint(g, time));
         coroutineTint = StartCoroutine(_Tint(g, time));
+        yield return new WaitForSeconds(time);
     }
 
     // the real guts
@@ -189,30 +167,30 @@ public class TintFader : MonoBehaviour
 
     // Basicaly _Transition, but with the letterbox material and callback
     public IEnumerator _Letterbox(bool enabled, float time, float maxCutoff = 0.25f) {
-        float at = 0;
-        float step = maxCutoff / (time * (1 / Time.fixedDeltaTime));
+        maxCutoff = enabled ? maxCutoff : 0;
+        float step = Mathf.Abs(letterboxCurrentCutoff - maxCutoff) / (time * (1 / Time.fixedDeltaTime));
+        print(maxCutoff+ "    t:  " + time + "     step: " + step);
         if (enabled)
         {
             if (time <= 0)
-                at = maxCutoff;
+                letterboxCurrentCutoff = maxCutoff;
             do
             {
-                at = Mathf.Min(at + step, maxCutoff);
-                TransitionMaterialLetterBox.SetFloat("_Cutoff", at);
+                letterboxCurrentCutoff = Mathf.Min(letterboxCurrentCutoff + step, maxCutoff);
+                TransitionMaterialLetterBox.SetFloat("_Cutoff", letterboxCurrentCutoff);
                 yield return new WaitForFixedUpdate();
-            } while (at < maxCutoff);
+            } while (letterboxCurrentCutoff < maxCutoff);
         }
         else
         {
-            at = maxCutoff;
             if (time <= 0)
-                at = 0;
+                letterboxCurrentCutoff = 0;
             do
             {
-                at = Mathf.Max(at - step, 0);
-                TransitionMaterialLetterBox.SetFloat("_Cutoff", at);
+                letterboxCurrentCutoff = Mathf.Max(letterboxCurrentCutoff - step, 0);
+                TransitionMaterialLetterBox.SetFloat("_Cutoff", letterboxCurrentCutoff);
                 yield return new WaitForFixedUpdate();
-            } while (at > 0);
+            } while (letterboxCurrentCutoff > 0);
         }
         if (callbackLetterBox != null)
             callbackLetterBox();

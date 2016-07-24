@@ -73,8 +73,7 @@ namespace BKB_RPG {
 
 
         static public Coroutine RunCoroutine(IEnumerator co) {
-            Coroutine coroutine = GameMaster._instance.StartCoroutine(co);
-            return coroutine;
+            return GameMaster._instance.StartCoroutine(co);
         }
 
         static public Transform GetPlayerTransform(int position = 0) {
@@ -160,16 +159,12 @@ namespace BKB_RPG {
         }
 
         static IEnumerator _Teleport(Vector3 position, string levelNameToLoad, string label, float timeOut = 0.25f, float timeIn = 0.25f) {
+            print("in _teleport");
             PauseAll();
             // Set state 'teleport'
-            bool wait = true;
 
             if (timeOut > 0)
-            {
-                _instance.mainCamera.FadeOut(timeOut, () => { wait = false; });
-                while (wait)
-                    yield return null;
-            }
+                yield return _instance.mainCamera.tintFader.FadeOut(timeOut);
 
             if (levelNameToLoad != null && levelNameToLoad != levelData.name)
                 yield return LoadLevel(levelNameToLoad);
@@ -178,12 +173,7 @@ namespace BKB_RPG {
             SetPartyPosition(position);
 
             if (timeIn > 0)
-            {
-                wait = true;
-                _instance.mainCamera.FadeIn(timeIn, () => { wait = false; });
-                while (wait)
-                    yield return null;
-            }
+                yield return _instance.mainCamera.tintFader.FadeIn(timeIn);
             ResumeAll();
             if (TPCallback != null)
                 TPCallback();
