@@ -6,7 +6,7 @@ namespace BKB_RPG {
     [System.Serializable]
     public class GameEventCommand {
 
-        public enum CommandTypes { Teleport=1, Pause, UnPause, Wait, Script, Label, GoTo, If, Else, EndIf, Shake, Tint, Transition, Debug, Letterbox };
+        public enum CommandTypes { Teleport = 1, Pause, UnPause, Wait, Script, Label, GoTo, If, Else, EndIf, Shake, Tint, Transition, Debug, Letterbox };
 
         public CommandTypes CommandID;
         public bool Block = false;
@@ -21,9 +21,10 @@ namespace BKB_RPG {
         public Transform transform_1;
         public Vector3 vector3_1;       // TP, shake
         public Vector3 vector3_2;       // shake
+        public Vector2 vector2_1;
         public Color color;
         public Gradient gradient;
-        public Texture texture;
+        public Texture2D texture;
         public bool bool_1;            // TP
 
         // SCRIPT
@@ -118,6 +119,8 @@ namespace BKB_RPG {
             float_1 = 1;    //time
             executionType = 0;      //type: fade in, fade out
             texture = null;
+            int_1 = 0;      //offset_type: none, player, explicit
+            vector2_1 = Vector2.zero;
         }
 
         void LabelCommand() {
@@ -179,7 +182,7 @@ namespace BKB_RPG {
 
         // ----------------------------------------------------------------------
 
-        public IEnumerator Execute(GameEvent geo=null) {
+        public IEnumerator Execute(GameEvent geo = null) {
             if (Block)
                 yield return Run();
             else
@@ -219,7 +222,7 @@ namespace BKB_RPG {
                 yield return RunTransition();
                 break;
             case CommandTypes.Letterbox:
-                yield return GameMaster._instance.mainCamera.tintFader.LetterBox(executionType==0, float_1, maxCutoff:float_2);
+                yield return GameMaster._instance.mainCamera.tintFader.LetterBox(executionType == 0, float_1, maxCutoff: float_2);
                 break;
             case CommandTypes.Debug:
             case CommandTypes.Label:
@@ -258,10 +261,15 @@ namespace BKB_RPG {
         }
 
         IEnumerator RunTransition() {
+            Vector2? vec2 = null;
+            if (int_1 == 1)
+                vec2 = GameMaster._instance.mainCamera.ScreenLocationVector(GameMaster._instance.playerData.gameObject.transform);
+            else if (int_1 == 2)
+                vec2 = vector2_1;
             if (executionType == 0)
-                return GameMaster._instance.mainCamera.tintFader.FadeOut(float_1, bool_1, color, texture);
+                return GameMaster._instance.mainCamera.tintFader.FadeOut(float_1, bool_1, color, texture, vec2);
             else
-                return GameMaster._instance.mainCamera.tintFader.FadeIn(float_1, bool_1, texture);
+                return GameMaster._instance.mainCamera.tintFader.FadeIn(float_1, bool_1, texture, vec2);
         }
 
         IEnumerator RunPause() {

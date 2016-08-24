@@ -5,6 +5,19 @@ using System.Collections.Generic;
 namespace BKB_RPG {
 	public static class Utils {
 
+        /// <summary>
+        /// Like Unity RaycastHit2D, but casts 1 to many rays from center to teh width of the collider.
+        /// </summary>
+        /// <param name="position">Center of Entity</param>
+        /// <param name="castDir">Direction to cast</param>
+        /// <param name="rays"># of rays to cast</param>
+        /// <param name="spread">Distance between rays modifier.</param>
+        /// <param name="lookAhead">Extra Distance to cast for colissiosn immediatly ahead.</param>
+        /// <param name="self">Optional transform to ignore collisions against</param>
+        /// <param name="layers">Layers to raycast against</param>
+        /// <param name="minDepth">Only include objects with a Z coordinate (depth) greater than or equal to this value.</param>
+        /// <param name="maxDepth">Only include objects with a Z coordinate (depth) less than or equal to this value.</param>
+        /// <returns></returns>
 		public static RaycastHit2D Raycast(Vector2 position, Vector2 castDir, int rays=1, float spread=1,
 		                                   float lookAhead=0.5f, Transform self=null, int layers=Physics2D.DefaultRaycastLayers,
                                            float minDepth=-Mathf.Infinity, float maxDepth=Mathf.Infinity) {
@@ -40,22 +53,33 @@ namespace BKB_RPG {
 			return hit;
 		}
 
-
-        public static Vector2 AngleMagnitudeToVector2(float angle, float magnitude) {
-            //force angle 0 = north, 90 = east
+        /// <summary>
+        /// Convert given angle to Vector2 (N = 0 degrees, follows clockwise)
+        /// </summary>
+        /// <param name="angle">Input angle</param>
+        /// <param name="magnitude">Optional magnitude of resulting Vector2</param>
+        /// <returns></returns>
+        public static Vector2 AngleMagnitudeToVector2(float angle, float magnitude=1) {
             Quaternion rotation = Quaternion.AngleAxis(450 - angle, Vector3.forward);
             return rotation * (Vector3.right * magnitude);
         }
 
-        public static Vector2 RandomAreaByDirection(int min, int max, int directions = 360, float unitDistance = 1) {
+        /// <summary>
+        /// Given an arc, choose a random angle;
+        /// </summary>
+        /// <param name="min">Degree start of arc</param>
+        /// <param name="max">Degree end of acr</param>
+        /// <param name="directions">Acceptable 'steps' of directions (4, 8, 360)</param>
+        /// <param name="magnitude"></param>
+        /// <returns></returns>
+        public static int RandomAngleWithinArc(int min, int max, int directions = 360) {
             min = min / directions;
             max = max / directions;
-            int angle = Random.Range(min, max) * directions;
-            return AngleMagnitudeToVector2(angle, unitDistance);
+            return Random.Range(min, max) * directions;
         }
 
         /// <summary>
-        /// 
+        /// Clamp given angle based on permited mover vectors.
         /// </summary>
         /// <param name="angle"></param>
         /// <param name="dir">4 = 90, 8 = 45, 360 = 360</param>
@@ -65,7 +89,11 @@ namespace BKB_RPG {
             return (Mathf.RoundToInt(angle / step) * step) % 360;
         }
 
-
+        /// <summary>
+        /// Covert given Vector to angle.
+        /// </summary>
+        /// <param name="v">Vector to convert.</param>
+        /// <returns></returns>
         public static float Vector2toAngle(Vector2 v) {
             if (v == Vector2.zero)
                 return 0;
@@ -75,6 +103,12 @@ namespace BKB_RPG {
             return Mathf.Abs(angle - 360) % 360;
         }
 
+        /// <summary>
+        /// Determine angle between two given vectors.
+        /// </summary>
+        /// <param name="position">Source</param>
+        /// <param name="target">Destination</param>
+        /// <returns></returns>
         public static float AngleBetween(Vector3 position, Vector3 target) {
             Vector2 r = target - position;
             return Vector2toAngle(r);

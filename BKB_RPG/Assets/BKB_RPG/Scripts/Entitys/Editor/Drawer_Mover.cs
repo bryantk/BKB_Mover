@@ -174,7 +174,7 @@ public class Drawer_Mover : Editor
             }
             else if (command.commandType == MovementCommand.CommandTypes.GoTo)
             {
-                Handles.Label(lastPos + textOffset, i.ToString() + ": GOTO: " + command.gotoId, style);
+                Handles.Label(lastPos + textOffset, i.ToString() + ": GOTO: " + command.int_1, style);
                 textOffset += offsetAmount;
             }
             else if (command.commandType == MovementCommand.CommandTypes.Boolean)
@@ -189,7 +189,7 @@ public class Drawer_Mover : Editor
             }
             else if (command.commandType == MovementCommand.CommandTypes.Remove)
             {
-                Handles.Label(lastPos + textOffset, i.ToString() + ": Pop" + command.gotoId, style);
+                Handles.Label(lastPos + textOffset, i.ToString() + ": Pop" + command.int_1, style);
                 textOffset += offsetAmount;
             }
             else if (command.commandType == MovementCommand.CommandTypes.Set)
@@ -507,7 +507,7 @@ public class Drawer_Mover : Editor
         case MovementCommand.CommandTypes.GoTo:
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight),
                                     element.FindPropertyRelative("gotoId"), new GUIContent("Command"));
-            command.gotoId = Mathf.Clamp(command.gotoId, 0, myScript.commands.Count - 1);
+            command.int_1 = Mathf.Clamp(command.int_1, 0, myScript.commands.Count - 1);
             break;
         case MovementCommand.CommandTypes.Boolean:
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, 150, EditorGUIUtility.singleLineHeight),
@@ -528,7 +528,7 @@ public class Drawer_Mover : Editor
         case MovementCommand.CommandTypes.Remove:
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight),
                                     element.FindPropertyRelative("gotoId"), new GUIContent("# to Remove"));
-            command.gotoId = Mathf.Clamp(command.gotoId, 0, myScript.commands.Count - 1);
+            command.int_1 = Mathf.Clamp(command.int_1, 0, myScript.commands.Count - 1);
             command.lines++;
             rect.y += EditorGUIUtility.singleLineHeight + 3;
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight),
@@ -545,9 +545,9 @@ public class Drawer_Mover : Editor
                 displays = System.Enum.GetNames(typeof(Mover.aSpeed));
                 values = new int[] { 0, 5, 10, 20, 30, 40 };
             }
-            command.gotoId = EditorGUI.IntPopup(
+            command.int_1 = EditorGUI.IntPopup(
                 new Rect(rect.x + 120, rect.y, rect.width - 160, EditorGUIUtility.singleLineHeight),
-                command.gotoId, displays, values);
+                command.int_1, displays, values);
             break;
         case MovementCommand.CommandTypes.Note:
             GUIStyle s = new GUIStyle(GUI.skin.box);
@@ -556,6 +556,15 @@ public class Drawer_Mover : Editor
             command.targetName = EditorGUI.TextField(new Rect(rect.x - 2, rect.y, rect.width, EditorGUIUtility.singleLineHeight * 3 + 9), 
                 command.targetName, s);
             command.lines += 2;
+            break;
+        case MovementCommand.CommandTypes.Sync:
+            Rect rect2 = rect;
+            rect2.width = 100;
+            command.int_1 = EditorGUI.IntPopup(rect2, command.int_1,
+                new string[] { "Await", "Notify" }, new int[] { 0, 1 });
+            if (command.int_1 == 1)
+                EditorGUI.PropertyField(new Rect(rect.x + 100, rect.y, rect.width - 100, EditorGUIUtility.singleLineHeight),
+                                      element.FindPropertyRelative("moverTarget"), new GUIContent(""));
             break;
         // ----------------------------------
         // NEW COMMAND DISPLAY LOGIC HERE

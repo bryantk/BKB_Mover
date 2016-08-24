@@ -1,20 +1,46 @@
 ﻿using UnityEngine;
 using UnityEngine.Events;
-using System.Collections;
+using System.Collections.Generic;
 
 namespace BKB_RPG {
-    public class Entity : MonoBehaviour, IPauseable, ITick {
+    public class Entity : MonoBehaviour, IPauseable, ITick, ISetup {
 
         public delegate void NullDelegate();
         NullDelegate tickDelegate;
 
         // TODO - Each and Each with seperate lists?
         public enum TriggerBehaviour { OnButtonPress, PlayerTouch, EventTouch, Always, Once, Each, None};
-        public TriggerBehaviour behaviour = TriggerBehaviour.OnButtonPress;
 
-        public float rate = 0.25f;
-        protected float _next;
-        public UnityEvent onActivate;
+        /// <summary>
+        /// 
+        /// </summary>
+        [System.Serializable]
+        public class EntityPageData {
+            public string condition;
+            public TriggerBehaviour trigger;
+            public float rate = 0.25f;
+            public GameEvent gameEvent;
+            public Mover mover;
+
+            public EntityPageData(GameEvent ge=null, Mover m=null) {
+                condition = "";
+                trigger = TriggerBehaviour.OnButtonPress;
+                rate = 0.25f;
+                gameEvent = ge;
+                mover = m;
+            }
+
+            public bool IsValidCondition() {
+                if (string.IsNullOrEmpty(condition))
+                    return true;
+                return GameMaster._instance.stringParser.EvaluateBool(condition);
+            }
+
+        }
+
+        public List<EntityPageData> eventPages;
+        public int activePage = 0;
+        protected float _next = 0;
 
         // TODO - Am I running an event? Don't run more if I am.
         public bool Processing = false;
@@ -26,27 +52,29 @@ namespace BKB_RPG {
         [HideInInspector]
         public Enemy bkb_enemy;
 
+        Counter frame60Counter;
+
+
         /// <summary>
         /// Poll self for all atached scripts 'entity' manages
         /// </summary>
-        public void Setup() {
+        public virtual void iSetup(object parent) {
             bkb_enemy = GetComponent<Enemy>();
             bkb_mover = GetComponent<Mover>();
-            if (bkb_mover != null)
-            {
-                bkb_mover.Setup(this);
-                tickDelegate = bkb_mover.iTick;
-            }
+            frame60Counter = new Counter(60);
+            DetermineEventPage();
         }
 
         public void iTick() {
-            if (tickDelegate != null)
-                tickDelegate();
-            if (!Paused && (behaviour == TriggerBehaviour.Always || behaviour == TriggerBehaviour.Once))
+            if (eventPages[activePage].mover != null)
+                eventPages[activePage].mover.iTick();
+            if (frame60Counter.Tick())
+                activePage = DetermineEventPage();
+            if (!Paused && (eventPages[activePage].trigger == TriggerBehaviour.Always || eventPages[activePage].trigger == TriggerBehaviour.Once))
             {
-                onActivate.Invoke();
-                if (behaviour == TriggerBehaviour.Once)
-                    behaviour = TriggerBehaviour.None;
+                RunEvent();
+                if (eventPages[activePage].trigger == TriggerBehaviour.Once)
+                    eventPages[activePage].trigger = TriggerBehaviour.None;
             }
         }
 
@@ -64,15 +92,40 @@ namespace BKB_RPG {
         }
         #endregion
 
+        protected int DetermineEventPage() {
+            int page = eventPages.Count;
+            if (eventPages.Count == 1)
+                page = 0;
+            for (int i = 0; i < eventPages.Count; i++)
+            {
+                if (eventPages[i].IsValidCondition())
+                {
+                    page = i;
+                    break;
+                }
+                    
+            }
+            if (page < eventPages.Count)
+                eventPages[page].mover.iSetup(this);
+            return page;
+        }
+
+        protected void RunEvent() {
+            if (activePage < eventPages.Count && eventPages[activePage].gameEvent != null)
+                eventPages[activePage].gameEvent.Run();
+        }
+
         public virtual void OnCollision(Transform hit) {
-            if (!(behaviour == TriggerBehaviour.EventTouch || behaviour == TriggerBehaviour.Each))
+            if (Paused)
+                return;
+            if (!(eventPages[activePage].trigger == TriggerBehaviour.EventTouch || eventPages[activePage].trigger == TriggerBehaviour.Each))
                 return;
             if (Time.time < _next)
                 return;
-            _next = Time.time + rate;
+            _next = Time.time + eventPages[activePage].rate;
             //Entity other = hit.GetComponent<Entity>();
 
-            onActivate.Invoke();
+            RunEvent();
             // TODO - Always do this?
             if (bkb_enemy != null && hit.GetComponent<Player>() != null)
                 bkb_enemy.Battle(false);
@@ -80,9 +133,11 @@ namespace BKB_RPG {
         }
 
         public void OnPlayerTouched() {
-            if (!(behaviour == TriggerBehaviour.PlayerTouch || behaviour == TriggerBehaviour.Each))
+            if (Paused)
                 return;
-            onActivate.Invoke();
+            if (!(eventPages[activePage].trigger == TriggerBehaviour.PlayerTouch || eventPages[activePage].trigger == TriggerBehaviour.Each))
+                return;
+            RunEvent();
             // TODO - Always do this?
             if (bkb_enemy != null)
                 bkb_enemy.Battle(true);
@@ -90,36 +145,40 @@ namespace BKB_RPG {
         }
 
         public void OnInputActivated() {
-            if (!(behaviour == TriggerBehaviour.OnButtonPress || behaviour == TriggerBehaviour.Each))
+            if (Paused)
                 return;
-            onActivate.Invoke();
+            if (!(eventPages[activePage].trigger == TriggerBehaviour.OnButtonPress || eventPages[activePage].trigger == TriggerBehaviour.Each))
+                return;
+            RunEvent();
             print("Player activated me, " + this.name);
         }
 
+        // TODO - add page index
+        // TODO - Determine need and functionality
         public void SetTriggerbehaviour(string type="NONE") {
             switch (type.ToUpper())
             {
             default:
             case "NONE":
-                behaviour = TriggerBehaviour.None;
+                eventPages[activePage].trigger = TriggerBehaviour.None;
                 break;
             case "EVENTTOUCH":
-                behaviour = TriggerBehaviour.EventTouch;
+                eventPages[activePage].trigger = TriggerBehaviour.EventTouch;
                 break;
             case "PLAYERTOUCH":
-                behaviour = TriggerBehaviour.PlayerTouch;
+                eventPages[activePage].trigger = TriggerBehaviour.PlayerTouch;
                 break;
             case "ALWAYS":
-                behaviour = TriggerBehaviour.Always;
+                eventPages[activePage].trigger = TriggerBehaviour.Always;
                 break;
             case "ONBUTTONPRESS":
-                behaviour = TriggerBehaviour.OnButtonPress;
+                eventPages[activePage].trigger = TriggerBehaviour.OnButtonPress;
                 break;
             case "ONCE":
-                behaviour = TriggerBehaviour.Once;
+                eventPages[activePage].trigger = TriggerBehaviour.Once;
                 break;
             case "EACH":
-                behaviour = TriggerBehaviour.Each;
+                eventPages[activePage].trigger = TriggerBehaviour.Each;
                 break;
             }
         }

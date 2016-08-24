@@ -5,14 +5,14 @@ namespace BKB_RPG {
 	[System.Serializable]
 	public class MovementCommand {
 
-		public enum CommandTypes { Move, Face, Wait, GoTo, Boolean, Script, Remove, Set, Note};
+		public enum CommandTypes { Move, Face, Wait, GoTo, Boolean, Script, Remove, Set, Note, Sync, WaitSync };
         // What kind of command is this?
 		public CommandTypes commandType;
         // Show detailed information in inespector?
         public bool expandedInspector;
 
         // BOOL
-        public enum FlagType { LockFacing, AlwaysAnimate, Clip, ClipAll, Invisible, IgnoreImpossible, Reverse, Pause, Script };
+        public enum FlagType { LockFacing, AlwaysAnimate, Clip, ClipAll, Invisible, IgnoreImpossible, Reverse, Pause };
         // What kind of bool 
         public FlagType flag;
         public bool Bool;   // and Remove
@@ -21,7 +21,7 @@ namespace BKB_RPG {
         public float time;
 
         // GOTO / REMOVE / SET
-        public int gotoId;
+        public int int_1;
 
         // SET
         public enum SetTypes { Speed, Animation };
@@ -59,6 +59,8 @@ namespace BKB_RPG {
         public bool recalculate;
         // # of lines inspector should reserve
         public int lines;
+
+        public Mover moverTarget;
 
         public MovementCommand(CommandTypes type=CommandTypes.Move) {
             SetMovementCommand(type);
@@ -100,6 +102,9 @@ namespace BKB_RPG {
             case CommandTypes.Note:
                 NoteCommand();
                 break;
+            case CommandTypes.Sync:
+                SyncCommand();
+                break;
             case CommandTypes.Move:
             default:
                 MoveCommand();
@@ -122,13 +127,13 @@ namespace BKB_RPG {
 
         public void GoToCommand() {
             commandType = CommandTypes.GoTo;
-            gotoId = 0;
+            int_1 = 0;
         }
 
         public void RemoveCommand() {
             commandType = CommandTypes.Remove;
             Bool = false;
-            gotoId = 1;
+            int_1 = 1;
         }
 
         public void ScriptCommand() {
@@ -157,13 +162,19 @@ namespace BKB_RPG {
 
         public void SetCommand() {
             commandType = CommandTypes.Set;
-            gotoId = 0;
+            int_1 = 0;
             setType = SetTypes.Animation;
         }
 
         public void NoteCommand() {
             commandType = CommandTypes.Note;
             targetName = "";
+        }
+
+        public void SyncCommand() {
+            commandType = CommandTypes.Sync;
+            int_1 = 0;
+            moverTarget = null;
         }
 
         /// <summary>
@@ -217,26 +228,32 @@ namespace BKB_RPG {
                 if (instant)
                     summary = "!" + summary;
                 break;
-            case MovementCommand.CommandTypes.Wait:
+            case CommandTypes.Wait:
                 summary = time.ToString() + " seconds";
                 break;
-            case MovementCommand.CommandTypes.Boolean:
+            case CommandTypes.Boolean:
                 summary = string.Format("{0} : {1}", flag, Bool);
                 break;
-            case MovementCommand.CommandTypes.GoTo:
-                summary = "GoTo command " + gotoId.ToString();
+            case CommandTypes.GoTo:
+                summary = "GoTo command " + int_1.ToString();
                 break;
-            case MovementCommand.CommandTypes.Script:
+            case CommandTypes.Script:
                 summary = "Call scripts: " + scriptCalls.GetPersistentEventCount();
                 break;
-            case MovementCommand.CommandTypes.Remove:
-                summary = "Remove " + gotoId + " commands";
+            case CommandTypes.Remove:
+                summary = "Remove " + int_1 + " commands";
                 break;
-            case MovementCommand.CommandTypes.Set:
-                summary = "Set " + setType.ToString() + " = " + gotoId.ToString();
+            case CommandTypes.Set:
+                summary = "Set " + setType.ToString() + " = " + int_1.ToString();
                 break;
-            case MovementCommand.CommandTypes.Note:
+            case CommandTypes.Note:
                 summary = "\"" + targetName + "\"";
+                break;
+            case CommandTypes.Sync:
+                if (int_1 == 0)
+                    summary = "Wait Sync";
+                else
+                    summary = "Send Sync: " + (moverTarget == null ? "self" : moverTarget.name);
                 break;
             // ----------------------------------
             // COMMAND QUICK VIEW

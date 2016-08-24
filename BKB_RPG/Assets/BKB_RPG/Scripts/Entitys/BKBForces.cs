@@ -63,7 +63,7 @@ public class BKBForces : MonoBehaviour, ITick {
             }
             if (Force != 0 && (ConstantForce || !mover.moving))
             {
-                Vector2 offset = Utils.AngleMagnitudeToVector2(Angle, 1);
+                Vector2 offset = Utils.AngleMagnitudeToVector2(Angle);
                 mover.StepTowards(mover.transform.position + (Vector3)offset, speedModifier: Force/1000);
             }
         }

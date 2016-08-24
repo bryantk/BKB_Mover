@@ -6,7 +6,7 @@ using System.Collections.Generic;
 public delegate void Callback();
 
 namespace BKB_RPG {
-    public class GameMaster : MonoBehaviour {
+    public class GameMaster : MonoBehaviour, ISetup {
 
         public static GameMaster _instance;
         public EntityMaster entityMaster;
@@ -28,9 +28,17 @@ namespace BKB_RPG {
 
         public CameraMaster mainCamera;
 
+        public StringParser stringParser;
+
         // callbacks
         static Callback TPCallback;
-   
+
+
+#if UNITY_EDITOR
+        void OnGUI() {
+            GUI.Label(new Rect(10, Screen.height - 20, 100, 20), Time.time.ToString());
+        }
+#endif
 
         public virtual void Awake() {
             if (_instance == null)
@@ -59,7 +67,16 @@ namespace BKB_RPG {
 
 
         void OnAwake() {
-            playerData.playerEntity.Setup();
+            iSetup();
+            // TODO - TEMP
+            BKB_FSM.StateManager.iSetup(null);
+
+        }
+
+        public void iSetup(object parent=null) {
+            stringParser = GetComponent<StringParser>();
+            stringParser.iSetup(this);
+            GameVariables.iSetup(null);
             if (entityMaster == null)
                 entityMaster = GetComponent<EntityMaster>();
             entityMaster.playerEntity = playerData.playerEntity;
@@ -67,10 +84,18 @@ namespace BKB_RPG {
             levelData.currentLevel = FindObjectOfType<LevelMaster>();
             if (levelData.currentLevel != null)
                 levelData.currentLevel.SetupLevel();
-            playerData.playerEntity.Setup();
+            
+            playerData.playerEntity.iSetup(this);
             mainCamera.ReParent(playerData.gameObject.transform);
-        }
+            // TODO - load from save
+            mainCamera.tintFader.FadeIn(0);
+            mainCamera.tintFader.Tint(Color.clear, 0);
+            mainCamera.tintFader.LetterBox(false);
 
+            GameVariables.SetBool("setup", true);
+            GameVariables.SetFloat("playerHP", 9001);
+            print(GameVariables.iSave());
+        }
 
         static public Coroutine RunCoroutine(IEnumerator co) {
             return GameMaster._instance.StartCoroutine(co);
@@ -159,10 +184,7 @@ namespace BKB_RPG {
         }
 
         static IEnumerator _Teleport(Vector3 position, string levelNameToLoad, string label, float timeOut = 0.25f, float timeIn = 0.25f) {
-            print("in _teleport");
-            PauseAll();
-            // Set state 'teleport'
-
+            BKB_FSM.StateManager.Push("TP");
             if (timeOut > 0)
                 yield return _instance.mainCamera.tintFader.FadeOut(timeOut);
 
@@ -174,7 +196,7 @@ namespace BKB_RPG {
 
             if (timeIn > 0)
                 yield return _instance.mainCamera.tintFader.FadeIn(timeIn);
-            ResumeAll();
+            BKB_FSM.StateManager.Pop();
             if (TPCallback != null)
                 TPCallback();
         }

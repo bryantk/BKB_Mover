@@ -22,10 +22,9 @@ public class LevelMaster : MonoBehaviour {
         if (!Application.isPlaying)
             return;
 #endif
-        print("set up entities");
         EntityMaster em = GameMaster._instance.entityMaster;
         em.entities = new List<Entity>(GetComponentsInChildren<Entity>());
-        em.OnSceneReady();
+        em.iSetup(null);
 
     }
 

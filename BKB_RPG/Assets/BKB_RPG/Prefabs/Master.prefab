@@ -43,6 +43,9 @@ GameObject:
   - 114: {fileID: 11416154}
   - 114: {fileID: 11428820}
   - 114: {fileID: 11465426}
+  - 114: {fileID: 11489252}
+  - 114: {fileID: 11403046}
+  - 114: {fileID: 11405916}
   m_Layer: 0
   m_Name: Master
   m_TagString: Untagged
@@ -102,6 +105,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 16.3125, y: -6.6875, z: -0.69875014}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_Children: []
   m_Father: {fileID: 437630}
   m_RootOrder: 0
@@ -114,6 +118,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_Children:
   - {fileID: 413128}
   - {fileID: 484646}
@@ -128,6 +133,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.5, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_Children: []
   m_Father: {fileID: 482638}
   m_RootOrder: 0
@@ -140,6 +146,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_Children:
   - {fileID: 458882}
   m_Father: {fileID: 484646}
@@ -153,6 +160,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 16.31, y: -6.69, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_Children:
   - {fileID: 482638}
   m_Father: {fileID: 437630}
@@ -253,6 +261,30 @@ Animator:
   m_WarningMessage: 
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
+--- !u!114 &11403046
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 154814}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54c3862f8b99c07498f907321e2a0e55, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &11405916
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 154814}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 84cbfe394f659764fa0cc9349ce255db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  jsEval: {fileID: 11489252}
+  test: Entity.Cube.x+2.7
 --- !u!114 &11411856
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -264,13 +296,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1b6ddc5acc0614f42869a1533200d087, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  behaviour: 0
-  rate: 0.25
-  onActivate:
-    m_PersistentCalls:
-      m_Calls: []
-    m_TypeName: UnityEngine.Events.UnityEvent, UnityEngine, Version=0.0.0.0, Culture=neutral,
-      PublicKeyToken=null
+  eventPages: []
+  activePage: 0
   Processing: 0
   Paused: 0
   bkb_enemy: {fileID: 0}
@@ -292,6 +319,7 @@ MonoBehaviour:
     playerEntity: {fileID: 11411856}
     mover: {fileID: 11435836}
   mainCamera: {fileID: 11459278}
+  stringParser: {fileID: 11405916}
 --- !u!114 &11428820
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -321,7 +349,7 @@ MonoBehaviour:
   facing: 0
   commands: []
   repeat: 0
-  move_speed: 200
+  move_speed: 100
   animation_speed: 40
   directions: 8
   currentCommandIndex: 0
@@ -329,6 +357,7 @@ MonoBehaviour:
   compelete: 0
   speedModifier: 1
   collisionLayerMask: 563
+  awaitSync: 0
   alwaysAnimate: 0
   clipEnties: 0
   clipAll: 0
@@ -431,6 +460,17 @@ MonoBehaviour:
   PositionScale: {x: 1, y: 1, z: 0}
   RotationScale: {x: 0, y: 0, z: 5}
   shakeSpeed: 1
+--- !u!114 &11489252
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 154814}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5371c54cb71a2624487fecdf6c38407d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!124 &12409816
 Behaviour:
   m_ObjectHideFlags: 1

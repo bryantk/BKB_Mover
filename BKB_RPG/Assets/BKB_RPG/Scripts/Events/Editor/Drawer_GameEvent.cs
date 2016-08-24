@@ -341,6 +341,20 @@ public class Drawer_GameEvent : Editor {
             rect.y += EditorGUIUtility.singleLineHeight + 3;
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth, EditorGUIUtility.singleLineHeight),
                                     element.FindPropertyRelative("texture"), new GUIContent("Optional"));
+            command.lines = 5;
+            if (command.texture != null)
+            {
+                command.lines = 6;
+                rect.y += EditorGUIUtility.singleLineHeight + 3;
+
+                rect2 = rect;
+                rect2.width = 80;
+                command.int_1 = EditorGUI.IntPopup(rect2, command.int_1,
+                                new string[] { "No Offset", "Player", "Absolute" }, new int[] { 0, 1, 2 });
+                if (command.int_1 == 2)
+                    EditorGUI.PropertyField(new Rect(rect.x + 120, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight),
+                                            element.FindPropertyRelative("vector2_1"), new GUIContent(""));
+            }
             break;
 
         case GameEventCommand.CommandTypes.Letterbox:

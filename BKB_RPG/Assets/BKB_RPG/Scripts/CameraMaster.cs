@@ -19,4 +19,12 @@ public class CameraMaster : MonoBehaviour {
         transform.localPosition = pos;
     }
 
+    public Vector2 ScreenLocationVector(Transform t) {
+        Vector3 pos = Camera.main.WorldToScreenPoint(t.position);
+        Vector2 vec = Vector2.zero;
+        vec.x = 2 * pos.x / Camera.main.pixelWidth - 1;
+        vec.y = 2 * pos.y / Camera.main.pixelHeight - 1;
+        return vec;
+    }
+
 }

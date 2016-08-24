@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 
 namespace BKB_RPG {
-    public class EntityMaster : MonoBehaviour, ITick {
+    public class EntityMaster : MonoBehaviour, ISetup, ITick {
 
 
         public Entity playerEntity;
@@ -10,10 +10,15 @@ namespace BKB_RPG {
 
 
         public void OnSceneReady() {
+            iSetup(null);
+        }
+
+        public void iSetup(object o) {
             foreach (Entity entity in entities)
             {
-                entity.Setup();
+                entity.iSetup(this);
             }
+            playerEntity.iSetup(null);
         }
 
 

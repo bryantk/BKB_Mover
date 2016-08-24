@@ -51,6 +51,8 @@ namespace BKB_RPG {
         public float speedModifier = 1;
         //
         public int collisionLayerMask = Physics2D.DefaultRaycastLayers;
+        // Sync command - do not advance until message from elsewhere
+        public bool awaitSync = false;
 
         // TODO
         public bool alwaysAnimate = false;
@@ -111,7 +113,7 @@ namespace BKB_RPG {
         // If not set in inspector, object will assign to animator on itself
         public Animator anim;
         Entity entity;
-        
+        bool setup = false;
         Renderer render;
         #endregion
 
@@ -149,10 +151,13 @@ namespace BKB_RPG {
             // TODO - Call some complete delegates?
         }
 
-		public void Setup(Entity entity) {
-            this.entity = entity;
-			startPosition = transform.position;
+		public void iSetup(object entity) {
+            if (setup)
+                return;
+            this.entity = entity as Entity;
+            startPosition = transform.position;
 
+            // Resolve 'magic strings'
             foreach (MovementCommand command in commands)
             {
                 if (command.targetName.ToUpper() == "PLAYER")
@@ -169,6 +174,7 @@ namespace BKB_RPG {
             if (pixel != null)
                 nearestPixel = pixel.resolution;
 
+            print(name + " " + directions);
             SetAnimation("8-dir", ((int)directions >= 8));
             if (alwaysAnimate)
                 SetAnimation("speed", animation_rate);
@@ -177,6 +183,7 @@ namespace BKB_RPG {
             SetFacing(facing);
             currentCommandIndex = -1;
             NextNode();
+            setup = true;
         }
 
         // TODO - Refacter into less
@@ -230,7 +237,7 @@ namespace BKB_RPG {
             if (lockFacing)
                 return;
             facing = Utils.ClampAngle(value, (int)directions);
-            Vector2 f = Utils.AngleMagnitudeToVector2(facing, 1);
+            Vector2 f = Utils.AngleMagnitudeToVector2(facing);
             SetAnimation("x", f.x);
             SetAnimation("y", f.y);
         }
@@ -282,7 +289,8 @@ namespace BKB_RPG {
                 else if (command.randomType == MovementCommand.RandomTypes.Area)
                 {
                     //TODO deal with random type (random or weighted)
-                    result += (Vector3)Utils.RandomAreaByDirection(0, 360, 360 / (int)directions, Random.Range(command.random.x, command.random.y));
+                    int randomAngle = Utils.RandomAngleWithinArc(0, 360, 360 / (int)directions);
+                    result += (Vector3)Utils.AngleMagnitudeToVector2(randomAngle, Random.Range(command.random.x, command.random.y));
                 }
             }
             // Do not excced maxStep distance when moving.
@@ -395,8 +403,8 @@ namespace BKB_RPG {
 			if (compelete || pause|| commands.Count == 0)
 				return;
 
-            MovementCommand.CommandTypes command_type = commands[currentCommandIndex].commandType;
-            switch (command_type)
+            MovementCommand command = commands[currentCommandIndex];
+            switch (command.commandType)
             {
             case MovementCommand.CommandTypes.Wait:
                 waitTime += Time.deltaTime;
@@ -414,20 +422,20 @@ namespace BKB_RPG {
                 iTick();
                 break;
             case MovementCommand.CommandTypes.GoTo:
-                currentCommandIndex = commands[currentCommandIndex].gotoId;
+                currentCommandIndex = command.int_1;
                 // This command is a NoOp
                 iTick();
                 break;
             case MovementCommand.CommandTypes.Script:
-                commands[currentCommandIndex].scriptCalls.Invoke();
+                command.scriptCalls.Invoke();
                 // This command is a NoOp
                 NextNode();
                 iTick();
                 break;
             case MovementCommand.CommandTypes.Remove:
-                int start = Mathf.Max(currentCommandIndex - commands[currentCommandIndex].gotoId, 0);
-                int remove = commands[currentCommandIndex].Bool ? 1 : 0;
-                int range = Mathf.Min(commands[currentCommandIndex].gotoId + remove, commands.Count);
+                int start = Mathf.Max(currentCommandIndex - command.int_1, 0);
+                int remove = command.Bool ? 1 : 0;
+                int range = Mathf.Min(command.int_1 + remove, commands.Count);
                 commands.RemoveRange(start, range);
                 currentCommandIndex = start - remove;
                 // This command is a NoOp
@@ -435,10 +443,10 @@ namespace BKB_RPG {
                 iTick();
                 break;
             case MovementCommand.CommandTypes.Set:
-                if (commands[currentCommandIndex].setType == MovementCommand.SetTypes.Speed)
-                    move_speed = (Speed)commands[currentCommandIndex].gotoId;
+                if (command.setType == MovementCommand.SetTypes.Speed)
+                    move_speed = (Speed)command.int_1;
                 else
-                    animation_speed = (aSpeed)commands[currentCommandIndex].gotoId;
+                    animation_speed = (aSpeed)command.int_1;
                 // This command is a NoOp
                 NextNode();
                 iTick();
@@ -448,11 +456,33 @@ namespace BKB_RPG {
                 NextNode();
                 iTick();
                 break;
+            case MovementCommand.CommandTypes.Sync:
+                if (command.int_1 == 0)
+                {
+                    awaitSync = true;
+                    command.commandType = MovementCommand.CommandTypes.WaitSync;
+                }
+                else if (command.int_1 == 1)
+                {
+                    if (command.moverTarget == null)
+                        command.moverTarget = this;
+                    command.moverTarget.awaitSync = false;
+                    NextNode();
+                    iTick();
+                }
+                break;
+            case MovementCommand.CommandTypes.WaitSync:
+                if (awaitSync)
+                    return;
+                command.commandType = MovementCommand.CommandTypes.Sync;
+                NextNode();
+                iTick();
+                break;
             // ---------------------------------------------
             // DEFINE COMMAND LOGIC HERE
             // ---------------------------------------------
             default:
-                Debug.LogWarning("Unknown command type: " + command_type.ToString());
+                Debug.LogWarning("Unknown command type: " + command.commandType.ToString());
                 return;
             }
         }

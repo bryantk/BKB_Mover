@@ -54,13 +54,28 @@ public class TintFader : MonoBehaviour
     /// <param name="time">Duration of fade in seconds.</param>
     /// <param name="t">Optional: Texture to use for wipe.</param>
     /// <param name="callback"></param>
-    public IEnumerator FadeOut(float time, bool distort = false, Color? color = null, Texture t = null, Callback callback = null) {
+    public IEnumerator FadeOut(float time, bool distort = false, Color? color = null, Texture2D t = null, Vector2? offset = null, Callback callback = null) {
         callbackTransition = callback;
         if (coroutineTransition != null)
             StopCoroutine(coroutineTransition);
         Color fadeColor = color == null ? Color.black : color.Value;
         if (t != null)
+        {
+            // Make sure there is an offset and extra texture to crop
+            if (offset != null && offset.Value != Vector2.zero && t.width > 128)
+            {
+                int x = (int)(128 - 128 * Mathf.Clamp(offset.Value.x, -1f, 1f));
+                int y = (int)(64 - 64 * Mathf.Clamp(offset.Value.y, -1f, 1f));
+                Color[] pix = t.GetPixels(x, y, 256, 128);
+                Texture2D tex = new Texture2D(256, 128);
+                tex.wrapMode = TextureWrapMode.Clamp;
+                tex.SetPixels(pix);
+                tex.Apply();
+                t = tex;
+            }
+            
             coroutineTransition = StartCoroutine(_Transition(true, time, distort, 1, t, color));
+        }
         else
             coroutineTransition = StartCoroutine(_Tint(_2Tone(Color.clear, fadeColor), time, TransitionMaterial));
         yield return new WaitForSeconds(time);
@@ -72,10 +87,23 @@ public class TintFader : MonoBehaviour
     /// <param name="time">Duration of fade in seconds.</param>
     /// <param name="t">Optional: Texture to use for wipe.</param>
     /// <param name="callback"></param>
-    public IEnumerator FadeIn(float time, bool distort=false, Texture t = null, Callback callback = null) {
+    public IEnumerator FadeIn(float time, bool distort=false, Texture2D t = null, Vector2? offset = null, Callback callback = null) {
         callbackTransition = callback;
         if (coroutineTransition != null)
             StopCoroutine(coroutineTransition);
+        // Make sure there is an offset and extra texture to crop
+        if (t != null && offset != null && t.width > 128)
+        {
+            print("Fade in");
+            int x = (int)(128 - 128 * Mathf.Clamp(offset.Value.x, -1f, 1f));
+            int y = (int)(64 - 64 * Mathf.Clamp(offset.Value.y, -1f, 1f));
+            Color[] pix = t.GetPixels(x, y, 256, 128);
+            Texture2D tex = new Texture2D(256, 128);
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.SetPixels(pix);
+            tex.Apply();
+            t = tex;
+        }
         coroutineTransition = StartCoroutine(_Transition(false, time, distort, t: t));
         yield return new WaitForSeconds(time);
     }
@@ -91,8 +119,8 @@ public class TintFader : MonoBehaviour
         callbackTint = callback;
         if (coroutineTint != null)
             StopCoroutine(coroutineTint);
-        //coroutineTint = StartCoroutine(_Tint(_2Tone(fromColor, toColor), time));
-        yield return _Tint(_2Tone(fromColor, toColor), time);
+        coroutineTint = StartCoroutine(_Tint(_2Tone(fromColor, toColor), time));
+        yield return new WaitForSeconds(time);
     }
 
     /// <summary>
@@ -105,7 +133,6 @@ public class TintFader : MonoBehaviour
         callbackTint = callback;
         if (coroutineTint != null)
             StopCoroutine(coroutineTint);
-        // coroutineTint = StartCoroutine(_Tint(_2Tone(currentColor, toColor), time));
         coroutineTint = StartCoroutine(_Tint(_2Tone(currentColor, toColor), time));
         yield return new WaitForSeconds(time);
     }
@@ -120,14 +147,13 @@ public class TintFader : MonoBehaviour
         callbackTint = callback;
         if (coroutineTint != null)
             StopCoroutine(coroutineTint);
-        //coroutineTint = StartCoroutine(_Tint(g, time));
         coroutineTint = StartCoroutine(_Tint(g, time));
         yield return new WaitForSeconds(time);
     }
 
     // the real guts
     public IEnumerator _Transition(bool fadeOut, float time, bool distort=false,
-                                   float fade=1, Texture t=null, Color? color=null) {
+                                   float fade=1, Texture2D t=null, Color? color=null) {
         if (color == null)
             color = fadeOut ? Color.clear : Color.black;
         TransitionMaterial.SetColor("_Color", color.Value);

@@ -8,16 +8,21 @@ namespace BKB_RPG {
         protected float _actionNext;
 
         void Awake() {
+            
+        }
+
+        public override void iSetup(object parent) {
             tag = "Player";
-            rate = 0.25f;
             InputMaster.moveEvent += Move;
             InputMaster.okButtonEvent += ActionPressed;
+            base.iSetup(null);
+            bkb_mover.iSetup(null);
         }
 
         public override void OnCollision(Transform hit) {
             if (Time.time < _next)
                 return;
-            _next = Time.time + rate;
+            _next = Time.time + actionRate;
             Entity other = hit.GetComponent<Entity>();
             if (other != null)
                 other.OnPlayerTouched();
@@ -59,7 +64,7 @@ namespace BKB_RPG {
             if (Time.time < _actionNext)
                 return;
             _actionNext = Time.time + actionRate;
-            Vector2 dir = Utils.AngleMagnitudeToVector2(bkb_mover.facing, 1);
+            Vector2 dir = Utils.AngleMagnitudeToVector2(bkb_mover.facing);
             RaycastHit2D hit = Utils.Raycast(transform.position, dir, 2, 0.25f, 0.75f, this.transform);
             if (hit)
             {
