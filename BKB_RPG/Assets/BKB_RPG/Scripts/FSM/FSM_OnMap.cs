@@ -5,10 +5,10 @@ namespace BKB_FSM {
 
         public FSM_OnMap() : base(FSMState.OnMap){
         }
-        public virtual void OnEnter(object o = null) {
+        public override void OnEnter(object o = null) {
             
         }
-        public virtual void OnExit(object o = null) {
+        public override void OnExit(object o = null) {
 
         }
     }

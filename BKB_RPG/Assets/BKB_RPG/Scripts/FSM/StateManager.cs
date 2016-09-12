@@ -24,6 +24,8 @@ namespace BKB_FSM {
         public static void Push(string targetState) {
             if (!states.ContainsKey(targetState))
                 return;
+            if (currentState != null)
+                currentState.OnTransitionOut();
             currentState = states[targetState];
             stateQueue.Push(currentState);
             currentState.OnEnter();
@@ -36,6 +38,11 @@ namespace BKB_FSM {
                 currentState.OnExit();
             stateQueue.Pop();
             currentState = stateQueue.Peek();
+            currentState.OnTransitionIn();
+        }
+
+        public static string GetState {
+            get { return currentState.state.ToString(); }
         }
     }
 }

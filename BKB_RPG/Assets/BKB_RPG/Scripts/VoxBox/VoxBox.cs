@@ -20,6 +20,7 @@ public class VoxBox : MonoBehaviour {
 
     // Occurs when Dialoguer starts a dialogue.
     static public event voidHandler onEnter;
+    
 
     // Occurs when VoxBox enters a TextPhase in a dialogue.
     // Use this to build the window. Everything to display your text should be initialized by end of this.
@@ -38,6 +39,7 @@ public class VoxBox : MonoBehaviour {
 
     // Occurs when VoxBox ends a dialogue.
     static public event voidHandler onExit;
+
 
     // Called at completeion of entire dialoug.
     static public Callback onComplete;

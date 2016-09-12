@@ -376,7 +376,15 @@ public class Drawer_GameEvent : Editor {
             if (command.executionType == 0)
                 EditorGUI.PropertyField(new Rect(rect.x + 120, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight),
                                         element.FindPropertyRelative("float_2"), new GUIContent(""));
- 
+            break;
+
+        case GameEventCommand.CommandTypes.Message:
+            rect.x += 120;
+            Rect r2 = new Rect(rect.x, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight);
+            if (command.expanded)
+                r2.height *= command.lines;
+            command.string_1 = EditorGUI.TextArea(r2, command.string_1);
+            command.lines = command.string_1.Split('\n').Length;
             break;
 
         }

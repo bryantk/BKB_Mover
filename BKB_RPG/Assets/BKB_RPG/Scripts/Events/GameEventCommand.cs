@@ -6,7 +6,7 @@ namespace BKB_RPG {
     [System.Serializable]
     public class GameEventCommand {
 
-        public enum CommandTypes { Teleport = 1, Pause, UnPause, Wait, Script, Label, GoTo, If, Else, EndIf, Shake, Tint, Transition, Debug, Letterbox };
+        public enum CommandTypes { Teleport = 1, Pause, UnPause, Wait, Script, Label, GoTo, If, Else, EndIf, Shake, Tint, Transition, Debug, Letterbox, Message };
 
         public CommandTypes CommandID;
         public bool Block = false;
@@ -17,7 +17,7 @@ namespace BKB_RPG {
         public int int_1;               // GoTO, shake
         public float float_1;           // wait, shake
         public float float_2;           // wait
-        public string string_1;         // TP, label
+        public string string_1;         // TP, label, message
         public Transform transform_1;
         public Vector3 vector3_1;       // TP, shake
         public Vector3 vector3_2;       // shake
@@ -25,7 +25,7 @@ namespace BKB_RPG {
         public Color color;
         public Gradient gradient;
         public Texture2D texture;
-        public bool bool_1;            // TP
+        public bool bool_1;            // TP, mesasge
 
         // SCRIPT
         public UnityEvent scriptCalls;
@@ -78,6 +78,9 @@ namespace BKB_RPG {
                 break;
             case CommandTypes.Letterbox:
                 LetterboxCommand();
+                break;
+            case CommandTypes.Message:
+                MessageCommand();
                 break;
             default:
                 TypeCommand(type);
@@ -176,6 +179,13 @@ namespace BKB_RPG {
             executionType = 0;
         }
 
+        void MessageCommand() {
+            CommandID = CommandTypes.Message;
+            lines = 5;
+            string_1 = "";
+            bool_1 = false;
+        }
+
         void TypeCommand(CommandTypes t) {
             CommandID = t;
         }
@@ -224,6 +234,9 @@ namespace BKB_RPG {
             case CommandTypes.Letterbox:
                 yield return GameMaster._instance.mainCamera.tintFader.LetterBox(executionType == 0, float_1, maxCutoff: float_2);
                 break;
+            case CommandTypes.Message:
+                yield return RunMessage();
+                break;
             case CommandTypes.Debug:
             case CommandTypes.Label:
             case CommandTypes.GoTo:
@@ -270,6 +283,15 @@ namespace BKB_RPG {
                 return GameMaster._instance.mainCamera.tintFader.FadeOut(float_1, bool_1, color, texture, vec2);
             else
                 return GameMaster._instance.mainCamera.tintFader.FadeIn(float_1, bool_1, texture, vec2);
+        }
+
+        IEnumerator RunMessage() {
+            Debug.LogWarning("running message: " + string_1);
+            VoxBox.QueueMessage(string_1);
+            bool wait = true;
+            VoxBox.PlayMessages(() => { wait = false; });
+            while (wait)
+                yield return null;
         }
 
         IEnumerator RunPause() {

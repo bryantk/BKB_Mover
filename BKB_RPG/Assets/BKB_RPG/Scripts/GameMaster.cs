@@ -70,6 +70,7 @@ namespace BKB_RPG {
             iSetup();
             // TODO - TEMP
             BKB_FSM.StateManager.iSetup(null);
+            
 
         }
 
@@ -85,6 +86,8 @@ namespace BKB_RPG {
             if (levelData.currentLevel != null)
                 levelData.currentLevel.SetupLevel();
             
+
+
             playerData.playerEntity.iSetup(this);
             mainCamera.ReParent(playerData.gameObject.transform);
             // TODO - load from save

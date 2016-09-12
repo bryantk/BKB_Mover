@@ -174,7 +174,6 @@ namespace BKB_RPG {
             if (pixel != null)
                 nearestPixel = pixel.resolution;
 
-            print(name + " " + directions);
             SetAnimation("8-dir", ((int)directions >= 8));
             if (alwaysAnimate)
                 SetAnimation("speed", animation_rate);
