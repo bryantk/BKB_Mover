@@ -12,8 +12,20 @@ public class InputMaster : MonoBehaviour {
 
     string[] _buttons = new string[] { "Fire1", "Fire2", "Fire3" };
 
-	// Update is called once per frame
-	void Update () {
+    private static bool isEnabled = true;
+
+    public static void EnablePlayerInput() {
+        isEnabled = true;
+    }
+
+    public static void DisablePlayerInput() {
+        isEnabled = false;
+    }
+
+    // Update is called once per frame
+    void Update () {
+        if (!isEnabled)
+            return;
         int x = _hor.Update();
         int y = _ver.Update();
         if (x != 0 || y != 0)

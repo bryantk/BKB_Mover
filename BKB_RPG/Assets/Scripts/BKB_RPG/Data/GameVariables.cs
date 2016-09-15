@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using SimpleJSON;
 
-public class GameVariables {
+public static class GameVariables {
 
     static Dictionary<string, float> floatDict;
     static Dictionary<string, string> stringDict;

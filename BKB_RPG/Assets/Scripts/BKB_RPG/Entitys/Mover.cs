@@ -151,7 +151,13 @@ namespace BKB_RPG {
             // TODO - Call some complete delegates?
         }
 
+        void OnCycleComplete() {
+            // TODO - Call onCycleComplete delegate/call back
+        }
+
 		public void iSetup(object entity) {
+            // TODO
+            // Cache and define sprite per mover
             if (setup)
                 return;
             this.entity = entity as Entity;
@@ -192,7 +198,8 @@ namespace BKB_RPG {
             currentCommandIndex += (reverse ? -1 : 1);
 			if (currentCommandIndex >= commands.Count)
             {
-				switch (repeat) {
+                OnCycleComplete();
+                switch (repeat) {
 				case RepeatBehavior.PingPong:
 					reverse = true;
 					currentCommandIndex = Mathf.Max(currentCommandIndex-2, 0);
@@ -212,7 +219,8 @@ namespace BKB_RPG {
 			} else if (currentCommandIndex < 0) {
 				if (!reverse)
 					return;
-				switch (repeat) {
+                OnCycleComplete();
+                switch (repeat) {
 				case RepeatBehavior.PingPong:
 					reverse = false;
 					currentCommandIndex = Mathf.Min(currentCommandIndex+2, commands.Count-1);

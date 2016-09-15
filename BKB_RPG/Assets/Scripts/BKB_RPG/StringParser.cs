@@ -15,7 +15,7 @@ public class StringParser : MonoBehaviour, ISetup {
     }
 
     public bool EvaluateBool(string str) {
-        return true;
+        //return true;
         // TODO
         return (bool)jsEval.Evaluate(ParseString(str));
     }
@@ -47,7 +47,7 @@ public class StringParser : MonoBehaviour, ISetup {
         results.Add(sb.ToString());
         for (int i = 0; i < results.Count; i++)
         {
-            print(results[i]);
+            //print(results[i]);
             if (results[i].Length == 1 && symbols.Contains(results[i]))
                 continue;
             if (results[i].Contains('.') && !IsFloat(results[i]))

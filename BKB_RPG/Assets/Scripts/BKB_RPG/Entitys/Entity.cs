@@ -48,7 +48,6 @@ namespace BKB_RPG {
         // readonly
         public bool Paused;
 
-        protected Mover bkb_mover;
         [HideInInspector]
         public Enemy bkb_enemy;
 
@@ -60,50 +59,47 @@ namespace BKB_RPG {
         /// </summary>
         public virtual void iSetup(object parent) {
             bkb_enemy = GetComponent<Enemy>();
-            bkb_mover = GetComponent<Mover>();
             frame60Counter = new Counter(60);
-            DetermineEventPage();
+            activePage = DetermineEventPage();
         }
 
         public void iTick() {
-            if (eventPages[activePage].mover != null)
-                eventPages[activePage].mover.iTick();
             if (frame60Counter.Tick())
                 activePage = DetermineEventPage();
-            if (!Paused && (eventPages[activePage].trigger == TriggerBehaviour.Always || eventPages[activePage].trigger == TriggerBehaviour.Once))
+            if (activePage >= eventPages.Count)
+                return;
+            var activeEvent = eventPages[activePage];
+            if (!Paused && activeEvent.mover != null)
+                activeEvent.mover.iTick();
+            if (!Paused && (activeEvent.trigger == TriggerBehaviour.Always || activeEvent.trigger == TriggerBehaviour.Once))
             {
                 RunEvent();
-                if (eventPages[activePage].trigger == TriggerBehaviour.Once)
-                    eventPages[activePage].trigger = TriggerBehaviour.None;
+                if (activeEvent.trigger == TriggerBehaviour.Once)
+                    activeEvent.trigger = TriggerBehaviour.None;
             }
         }
 
         #region Pause + Resume
         public void iPause() {
             Paused = true;
-            if (bkb_mover != null)
-                bkb_mover.iPause();
         }
 
         public void iResume() {
             Paused = false;
-            if (bkb_mover != null)
-                bkb_mover.iResume();
         }
         #endregion
 
         protected int DetermineEventPage() {
             int page = eventPages.Count;
-            if (eventPages.Count == 1)
-                page = 0;
             for (int i = 0; i < eventPages.Count; i++)
             {
                 if (eventPages[i].IsValidCondition())
                 {
+                    if (i == page)
+                        return page;
                     page = i;
                     break;
                 }
-                    
             }
             if (page < eventPages.Count)
                 eventPages[page].mover.iSetup(this);

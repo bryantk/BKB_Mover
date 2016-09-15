@@ -612,17 +612,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   eventPages:
-  - condition: 
+  - condition: 4 == 4
     trigger: 0
     rate: 0.25
     gameEvent: {fileID: 889059120}
     mover: {fileID: 889059113}
-  - condition: 
+  - condition: 5 == 4
     trigger: 0
     rate: 0.25
     gameEvent: {fileID: 0}
     mover: {fileID: 889059113}
-  activePage: 0
+  activePage: 2
   Processing: 0
   Paused: 0
   bkb_enemy: {fileID: 0}
@@ -1021,8 +1021,8 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 2
+  m_Father: {fileID: 866767558}
+  m_RootOrder: 1
 --- !u!4 &953708580 stripped
 Transform:
   m_PrefabParentObject: {fileID: 440462, guid: eec10611527313b49a9e4c2d3321fa08, type: 2}

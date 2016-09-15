@@ -70,8 +70,6 @@ namespace BKB_RPG {
             iSetup();
             // TODO - TEMP
             BKB_FSM.StateManager.iSetup(null);
-            
-
         }
 
         public void iSetup(object parent=null) {
@@ -87,17 +85,16 @@ namespace BKB_RPG {
                 levelData.currentLevel.SetupLevel();
             
 
-
             playerData.playerEntity.iSetup(this);
             mainCamera.ReParent(playerData.gameObject.transform);
             // TODO - load from save
             mainCamera.tintFader.FadeIn(0);
             mainCamera.tintFader.Tint(Color.clear, 0);
             mainCamera.tintFader.LetterBox(false);
-
+            // TODO - TESTing
             GameVariables.SetBool("setup", true);
             GameVariables.SetFloat("playerHP", 9001);
-            print(GameVariables.iSave());
+            //print(GameVariables.iSave());
         }
 
         static public Coroutine RunCoroutine(IEnumerator co) {

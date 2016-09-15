@@ -5,7 +5,9 @@ namespace BKB_RPG {
     public class Player : Entity {
 
         public float actionRate = 0.25f;
-        protected float _actionNext;
+
+        private float _actionNext;
+        private Mover bkb_mover;
 
         void Awake() {
             
@@ -13,6 +15,7 @@ namespace BKB_RPG {
 
         public override void iSetup(object parent) {
             tag = "Player";
+            bkb_mover = GetComponent<Mover>();
             InputMaster.moveEvent += Move;
             InputMaster.okButtonEvent += ActionPressed;
             base.iSetup(null);
