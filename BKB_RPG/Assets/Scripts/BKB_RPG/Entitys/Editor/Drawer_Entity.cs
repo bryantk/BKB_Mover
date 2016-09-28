@@ -3,6 +3,8 @@ using UnityEngine;
 using UnityEditor;
 using BKB_RPG;
 
+using System.IO;
+
 [CustomEditor(typeof(Entity))]
 public class Drawer_Entity : Editor
 {
@@ -26,6 +28,16 @@ public class Drawer_Entity : Editor
         EditorGUILayout.PropertyField(serializedObject.FindProperty("m_Script"),
             true, new GUILayoutOption[0]);
 
+        GUILayout.BeginHorizontal();
+        if (myScript.UID != -1)
+        {
+            EditorGUILayout.LabelField("UID", myScript.UID.ToString());
+        }
+        if (GUILayout.Button("Generate UID"))
+        {
+            myScript.UID = GenerateUID();
+        }
+        GUILayout.EndHorizontal();
 
         int pagesToShow = (int)(Screen.width / buttonWidth) - 2;
         EditorGUILayout.LabelField("Page", string.Format("Showing {0}-{1} of {2}", firstPage, Mathf.Min(firstPage + pagesToShow, myScript.eventPages.Count)-1, myScript.eventPages.Count));
@@ -84,7 +96,7 @@ public class Drawer_Entity : Editor
         if (GUI.Button(new Rect(100, header.y + 113, 30, 15), "Get"))
             myScript.eventPages[selectedPage].mover = myScript.GetComponent<Mover>();
         EditorGUILayout.PropertyField(page.FindPropertyRelative("mover"));
-        
+        EditorGUILayout.PropertyField(page.FindPropertyRelative("useCollider"));
         EditorGUILayout.Space();
         EditorGUILayout.PropertyField(serializedObject.FindProperty("activePage"));
         serializedObject.ApplyModifiedProperties();
@@ -127,6 +139,31 @@ public class Drawer_Entity : Editor
             Event.current.Use();
             callback();
         }
+    }
+
+    int GenerateUID() {
+        
+        int uid = 0;
+        string filepath = Application.dataPath.Replace("Assets", "UID.txt");
+        try
+        {   // Open the text file using a stream reader.
+            using (StreamReader sr = new StreamReader(filepath))
+            {
+                // Read the stream to a string, and write the string to the console.
+                string line = sr.ReadToEnd();
+                int.TryParse(line, out uid);
+            }
+        }
+        catch (System.Exception e)
+        {
+            uid = 0;
+        }
+        uid++;
+        using (System.IO.StreamWriter file = new System.IO.StreamWriter(@filepath))
+        {
+            file.WriteLine(uid.ToString());
+        }
+        return uid;
     }
 
 }

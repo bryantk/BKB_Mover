@@ -6,7 +6,8 @@ namespace BKB_RPG {
     [System.Serializable]
     public class GameEventCommand {
 
-        public enum CommandTypes { Teleport = 1, Pause, UnPause, Wait, Script, Label, GoTo, If, Else, EndIf, Shake, Tint, Transition, Debug, Letterbox, Message };
+        public enum CommandTypes { Teleport = 1, Pause, UnPause, Wait, Script, Label, GoTo, If, Else, EndIf,
+            Shake, Tint, Transition, Debug, Letterbox, Message, Globals, Local, EntityEvent };
 
         public CommandTypes CommandID;
         public bool Block = false;
@@ -15,9 +16,12 @@ namespace BKB_RPG {
         public bool expanded = true;
 
         public int int_1;               // GoTO, shake
+        public int int_2;
         public float float_1;           // wait, shake
         public float float_2;           // wait
         public string string_1;         // TP, label, message
+        public string string_2;         // Global key
+        public Entity entity;
         public Transform transform_1;
         public Vector3 vector3_1;       // TP, shake
         public Vector3 vector3_2;       // shake
@@ -50,6 +54,9 @@ namespace BKB_RPG {
             case CommandTypes.Wait:
                 WaitCommand();
                 break;
+            case CommandTypes.If:
+                IfCommand();
+                break;
             case CommandTypes.Script:
                 ScriptCommand();
                 break;
@@ -81,6 +88,15 @@ namespace BKB_RPG {
                 break;
             case CommandTypes.Message:
                 MessageCommand();
+                break;
+            case CommandTypes.Globals:
+                GlobalCommand(true);
+                break;
+            case CommandTypes.Local:
+                GlobalCommand(false);
+                break;
+            case CommandTypes.EntityEvent:
+                EntityEventCommand();
                 break;
             default:
                 TypeCommand(type);
@@ -124,6 +140,12 @@ namespace BKB_RPG {
             texture = null;
             int_1 = 0;      //offset_type: none, player, explicit
             vector2_1 = Vector2.zero;
+        }
+
+        void IfCommand() {
+            CommandID = CommandTypes.If;
+            lines = 2;
+            string_1 = "";
         }
 
         void LabelCommand() {
@@ -186,33 +208,37 @@ namespace BKB_RPG {
             bool_1 = false;
         }
 
+        void GlobalCommand(bool global) {
+            CommandID = global ? CommandTypes.Globals : CommandTypes.Local;
+            lines = 2;
+            executionType = 0; //Bool, float, string
+            bool_1 = false;
+            int_1 = 0;
+            float_1 = 0;
+            string_1 = "";
+            string_2 = "";
+        }
+
+        void EntityEventCommand() {
+            CommandID = CommandTypes.EntityEvent;
+            lines = 2;
+            executionType = 0; //change execution, erase
+            entity = null;  // target, null = self
+            int_1 = 0;  // page, -1 for current
+            int_2 = 0; // executtion trigger type
+        }
+
         void TypeCommand(CommandTypes t) {
             CommandID = t;
         }
 
         // ----------------------------------------------------------------------
 
-        public IEnumerator Execute(GameEvent geo = null) {
-            if (Block)
-                yield return Run();
-            else
-            {
-                if (geo != null)
-                    geo.StartCoroutine(Run());
-                else
-                    GameMaster._instance.StartCoroutine(Run());
-            }
-        }
-
-        public IEnumerator Run() {
+        public IEnumerator Run(GameEvent gameEvent)
+        {
+            gEvent = gameEvent;
             switch (CommandID)
             {
-            case CommandTypes.Pause:
-                yield return RunPause();
-                break;
-            case CommandTypes.UnPause:
-                yield return RunUnPause();
-                break;
             case CommandTypes.Wait:
                 yield return RunWait();
                 break;
@@ -263,7 +289,7 @@ namespace BKB_RPG {
             float time = float_1;
             if (executionType == 1)
                 time = Random.Range(float_2, float_1);
-            yield return new WaitForSeconds(time);
+            yield return Wait(time);
         }
 
         IEnumerator RunTint() {
@@ -286,7 +312,6 @@ namespace BKB_RPG {
         }
 
         IEnumerator RunMessage() {
-            Debug.LogWarning("running message: " + string_1);
             VoxBox.QueueMessage(string_1);
             bool wait = true;
             VoxBox.PlayMessages(() => { wait = false; });
@@ -294,7 +319,36 @@ namespace BKB_RPG {
                 yield return null;
         }
 
-        IEnumerator RunPause() {
+        // Run by GameEvent
+        public void RunGlobals(string key) {
+            Debug.Log(key);
+            switch(executionType)
+            {
+            case 0:
+                GameVariables.SetBool(string_2, bool_1);
+                break;
+            case 1:
+                GameVariables.SetFloat(string_2, float_1);
+                break;
+            case 2:
+                GameVariables.SetString(string_2, string_1);
+                break;
+            case 3:
+                GameVariables.SetBool(string_2, GameMaster._instance.stringParser.EvaluateBool(string_1));
+                break;
+            case 4:
+                GameVariables.SetFloat(string_2, GameMaster._instance.stringParser.EvaluateFloat(string_1));
+                break;
+            case 5:
+                Debug.Log(string_1);
+                GameVariables.SetString(string_2, GameMaster._instance.stringParser.EvaluateString(string_1));
+                break;
+            }
+
+        }
+
+        // Run by GameEvent
+        public void RunPause() {
             switch (executionType)
             {
             case 0:     // Pause all
@@ -310,10 +364,10 @@ namespace BKB_RPG {
                 GameMaster.PauseEnemies();
                 break;
             }
-            yield break;
         }
 
-        IEnumerator RunUnPause() {
+        // Run by GameEvent
+        public void RunUnPause() {
             switch (executionType)
             {
             case 0:     // Pause all
@@ -329,8 +383,34 @@ namespace BKB_RPG {
                 GameMaster.ResumeEnemies();
                 break;
             }
-            yield break;
         }
+
+        private GameEvent gEvent;
+
+        IEnumerator Wait(float seconds)
+        {
+            float lastTick = 0;
+            while (true)
+            {
+                if (gEvent._paused)
+                {
+                    Debug.Log("paused");
+                    lastTick = Time.time;
+                    yield return null;
+                }
+                float now = Time.time;
+                if (lastTick != 0)
+                    seconds -= now - lastTick;
+                if (seconds <= 0)
+                    yield break;
+                lastTick = now;
+                yield return null;
+            }
+        }
+
+
+
+
 
 
     }

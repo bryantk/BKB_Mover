@@ -177,6 +177,7 @@ public class Drawer_GameEvent : Editor {
         Rect rect2;
         switch (command.CommandID)
         {
+        case GameEventCommand.CommandTypes.If:
         case GameEventCommand.CommandTypes.Debug:
         case GameEventCommand.CommandTypes.Label:
             rect.x += 120;
@@ -191,7 +192,7 @@ public class Drawer_GameEvent : Editor {
             rect.x += 120;
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight),
                                     element.FindPropertyRelative("int_1"), new GUIContent("Command"));
-            command.int_1 = Mathf.Clamp(command.int_1, 0, myScript.commands.Count - 1);
+            command.int_1 = Mathf.Clamp(command.int_1, -1, myScript.commands.Count - 1);
             break;
 
         case GameEventCommand.CommandTypes.Wait:
@@ -376,6 +377,81 @@ public class Drawer_GameEvent : Editor {
             if (command.executionType == 0)
                 EditorGUI.PropertyField(new Rect(rect.x + 120, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight),
                                         element.FindPropertyRelative("float_2"), new GUIContent(""));
+            break;
+
+        case GameEventCommand.CommandTypes.Globals:
+            rect.x += 120;
+            rect2 = rect;
+            rect2.width = tabedWidth - 120;
+            command.executionType = EditorGUI.IntPopup(rect2, command.executionType,
+                new string[] { "Set Bool", "Set Float", "Set String", "Set Bool with eval", "Set Float with eval", "Set String with eval" }, new int[] { 0, 1, 2, 3, 4, 5 });
+            if (!command.expanded)
+                return;
+            rect.x -= 120;
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+            EditorGUI.PropertyField(new Rect(rect.x + 30, rect.y, 80, EditorGUIUtility.singleLineHeight),
+                                        element.FindPropertyRelative("string_2"), new GUIContent(""));
+            string target = "bool_1";
+            if (command.executionType == 1)
+                target = "float_1";
+            else if (command.executionType >= 2)
+                target = "string_1";
+            EditorGUI.PropertyField(new Rect(rect.x + 120, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight),
+                                        element.FindPropertyRelative(target), new GUIContent(""));
+            break;
+
+        case GameEventCommand.CommandTypes.Local:
+            rect.x += 120;
+            rect2 = rect;
+            rect2.width = tabedWidth - 120;
+            command.executionType = EditorGUI.IntPopup(rect2, command.executionType,
+                new string[] { "Set Bool", "Set Float", "Set String", "Set Bool with eval", "Set Float with eval", "Set String with eval" }, new int[] { 0, 1, 2, 3, 4, 5 });
+            if (!command.expanded)
+                return;
+            rect.x -= 120;
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+
+            string[] lookup = { "A", "B", "C", "D" };
+            command.int_1 = EditorGUI.IntPopup(new Rect(rect.x + 30, rect.y, 80, EditorGUIUtility.singleLineHeight),
+                command.int_1, lookup, new int[] { 0, 1, 2, 3 });
+            command.string_2 = lookup[command.int_1];
+
+            string target2 = "bool_1";
+            if (command.executionType == 1)
+                target2 = "float_1";
+            else if (command.executionType >= 2)
+                target2 = "string_1";
+            command.string_2 = target2[0] + "-" + command.string_2;
+            EditorGUI.PropertyField(new Rect(rect.x + 120, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight),
+                                        element.FindPropertyRelative(target2), new GUIContent(""));
+            break;
+
+        case GameEventCommand.CommandTypes.EntityEvent:
+            rect.x += 120;
+            rect2 = rect;
+            rect2.width = tabedWidth - 120;
+            command.executionType = EditorGUI.IntPopup(rect2, command.executionType,
+                new string[] { "Set Execution", "Erase" }, new int[] { 0, 1 });
+            if (!command.expanded)
+                return;
+            rect.x -= 120;
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+
+            EditorGUI.PropertyField(new Rect(rect.x + 30, rect.y, 140, EditorGUIUtility.singleLineHeight),
+                                        element.FindPropertyRelative("entity"), new GUIContent(""));
+
+            if (command.executionType == 0)
+            {
+                command.int_1 = EditorGUI.IntField(new Rect(rect.x + 175, rect.y, 40, EditorGUIUtility.singleLineHeight), command.int_1);
+                int limit = 0;
+                if (command.entity == null)
+                    limit = myScript.gameObject.GetComponent<Entity>().eventPages.Count - 1;
+                else
+                    limit = command.entity.eventPages.Count - 1;
+                command.int_1 = Mathf.Clamp(command.int_1, - 2, limit);
+                command.int_2 = EditorGUI.IntPopup(new Rect(rect.x + 220, rect.y, tabedWidth - 220, EditorGUIUtility.singleLineHeight),
+                command.int_2, new string[] { "OnButtonPress", "PlayerTouch", "EventTouch", "Always", "Once", "Each", "None" }, new int[] { 0, 1, 2, 3, 4, 5, 6 });
+            }
             break;
 
         case GameEventCommand.CommandTypes.Message:

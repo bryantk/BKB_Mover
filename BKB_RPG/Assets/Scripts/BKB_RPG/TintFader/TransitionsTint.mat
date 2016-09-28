@@ -40,7 +40,7 @@ Material:
       data:
         first:
           name: _Cutoff
-        second: 1
+        second: 0
       data:
         first:
           name: _Distort
@@ -48,9 +48,9 @@ Material:
       data:
         first:
           name: _Fade
-        second: 0
+        second: 1
     m_Colors:
       data:
         first:
           name: _Color
-        second: {r: 0.95686275, g: 0.95686275, b: 0.95686275, a: 0}
+        second: {r: 1, g: 0, b: 0, a: 1}

@@ -62,12 +62,12 @@ public static class GameVariables {
         SetString(key, color);
     }
 
-    public static string GetStringt(string key) {
-        return stringDict.GetOrDefault(key, "");
+    public static string GetString(string key) {
+        return stringDict.GetOrDefault(key, "NULL");
     }
 
     public static Color GetColor(string key) {
-        string colorString = GetStringt(key);
+        string colorString = GetString(key);
         if (colorString == "")
             return Color.white;
         Color color = Color.white;

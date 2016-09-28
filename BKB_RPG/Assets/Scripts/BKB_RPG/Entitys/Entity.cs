@@ -5,8 +5,11 @@ using System.Collections.Generic;
 namespace BKB_RPG {
     public class Entity : MonoBehaviour, IPauseable, ITick, ISetup {
 
+        // TODO - move this elsewhere
         public delegate void NullDelegate();
         NullDelegate tickDelegate;
+
+        public int UID = -1;
 
         // TODO - Each and Each with seperate lists?
         public enum TriggerBehaviour { OnButtonPress, PlayerTouch, EventTouch, Always, Once, Each, None};
@@ -21,6 +24,7 @@ namespace BKB_RPG {
             public float rate = 0.25f;
             public GameEvent gameEvent;
             public Mover mover;
+            public bool useCollider;
 
             public EntityPageData(GameEvent ge=null, Mover m=null) {
                 condition = "";
@@ -28,12 +32,13 @@ namespace BKB_RPG {
                 rate = 0.25f;
                 gameEvent = ge;
                 mover = m;
+                useCollider = true;
             }
 
             public bool IsValidCondition() {
                 if (string.IsNullOrEmpty(condition))
                     return true;
-                return GameMaster._instance.stringParser.EvaluateBool(condition);
+                return GameMaster._instance.stringParser.EvaluateBool(condition, gameEvent == null ? null : gameEvent.gameObject);
             }
 
         }
@@ -51,8 +56,15 @@ namespace BKB_RPG {
         [HideInInspector]
         public Enemy bkb_enemy;
 
-        Counter frame60Counter;
+        private Counter frame60Counter;
+        protected Collider2D myCollider;
 
+        public void SetEvaluateConditions(bool active) {
+            if (active)
+                frame60Counter.Resume();
+            else
+                frame60Counter.Pause();
+        }
 
         /// <summary>
         /// Poll self for all atached scripts 'entity' manages
@@ -60,13 +72,19 @@ namespace BKB_RPG {
         public virtual void iSetup(object parent) {
             bkb_enemy = GetComponent<Enemy>();
             frame60Counter = new Counter(60);
+            myCollider = GetComponent<Collider2D>();
+            for (int i = 0; i < eventPages.Count; i++)
+            {
+                if (eventPages[i].gameEvent != null)
+                    eventPages[i].gameEvent.iSetup(this);
+            }
             activePage = DetermineEventPage();
         }
 
-        public void iTick() {
+        public virtual void iTick() {
             if (frame60Counter.Tick())
                 activePage = DetermineEventPage();
-            if (activePage >= eventPages.Count)
+            if (!gameObject.active || activePage >= eventPages.Count)
                 return;
             var activeEvent = eventPages[activePage];
             if (!Paused && activeEvent.mover != null)
@@ -77,6 +95,11 @@ namespace BKB_RPG {
                 if (activeEvent.trigger == TriggerBehaviour.Once)
                     activeEvent.trigger = TriggerBehaviour.None;
             }
+        }
+
+        public void iDestory()
+        {
+            EntityMaster.DestoryEntity(this);
         }
 
         #region Pause + Resume
@@ -101,9 +124,20 @@ namespace BKB_RPG {
                     break;
                 }
             }
-            if (page < eventPages.Count)
-                eventPages[page].mover.iSetup(this);
+            gameObject.SetActive(page < eventPages.Count);
+            if (page >= eventPages.Count)
+                return eventPages.Count;
+            if (eventPages[page].mover != null)
+                SetupPage(page);
             return page;
+        }
+
+        protected void SetupPage(int page) {
+            eventPages[page].mover.iSetup(this);
+            if (myCollider != null)
+            {
+                myCollider.isTrigger = !eventPages[page].useCollider;
+            }
         }
 
         protected void RunEvent() {

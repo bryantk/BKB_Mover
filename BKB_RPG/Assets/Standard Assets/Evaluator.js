@@ -1,4 +1,3 @@
-﻿
-function Evaluate(line) {
+﻿function Evaluate(line) {
     return eval(line);
 }

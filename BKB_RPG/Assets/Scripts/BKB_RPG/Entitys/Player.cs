@@ -18,8 +18,13 @@ namespace BKB_RPG {
             bkb_mover = GetComponent<Mover>();
             InputMaster.moveEvent += Move;
             InputMaster.okButtonEvent += ActionPressed;
-            base.iSetup(null);
+            myCollider = GetComponent<Collider2D>();
             bkb_mover.iSetup(null);
+        }
+
+        public override void iTick() {
+            if (!Paused)
+                bkb_mover.iTick();
         }
 
         public override void OnCollision(Transform hit) {
@@ -61,6 +66,8 @@ namespace BKB_RPG {
         }
 
         public void ActionPressed() {
+            if (BKB_FSM.StateManager.GetState != "OnMap")
+                return;
             print("action!");
             if (Paused)
                 return;
