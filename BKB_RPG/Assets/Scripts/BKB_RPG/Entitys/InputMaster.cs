@@ -4,11 +4,14 @@ using System;
 public class InputMaster : MonoBehaviour {
 
     public static event EventHandler<InfoEventArgs<Vector2>> moveEvent;
+    // TODO - think this one out better
+    public static ButtonDelegate notMoving;
     public delegate void ButtonDelegate();
     public static  ButtonDelegate okButtonEvent;
+    public static ButtonDelegate cancleButtonEvent;
 
-    Repeater _hor = new Repeater("Horizontal");
-    Repeater _ver = new Repeater("Vertical");
+    public static Repeater _hor = new Repeater("Horizontal");
+    public static Repeater verticalRepeater = new Repeater("Vertical");
 
     string[] _buttons = new string[] { "Fire1", "Fire2", "Fire3" };
 
@@ -27,7 +30,7 @@ public class InputMaster : MonoBehaviour {
         if (!isEnabled)
             return;
         int x = _hor.Update();
-        int y = _ver.Update();
+        int y = verticalRepeater.Update();
         if (x != 0 || y != 0)
         {
             //if (x != 0 && y != 0)
@@ -35,11 +38,26 @@ public class InputMaster : MonoBehaviour {
             if (moveEvent != null)
                 moveEvent(this, new InfoEventArgs<Vector2>(new Vector2(x, y)));
         }
+        else
+        {
+            if (notMoving != null)
+                notMoving();
+        }
 
         for (int i = 0; i < 3; ++i)
         {
-            if (Input.GetButtonUp(_buttons[i]) && okButtonEvent != null)
-                okButtonEvent();
+            if (Input.GetButtonUp(_buttons[i]))
+            {
+                if (i == 0 && okButtonEvent != null)
+                {
+                    okButtonEvent();
+                }
+                else if (i == 1 && cancleButtonEvent != null)
+                {
+                    cancleButtonEvent();
+                }
+            }
+                
         }
     }
 

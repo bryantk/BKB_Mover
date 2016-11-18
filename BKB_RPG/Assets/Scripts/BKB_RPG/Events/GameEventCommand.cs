@@ -1,13 +1,14 @@
 ﻿using UnityEngine;
 using UnityEngine.Events;
 using System.Collections;
+using BKB_TEXT;
 
 namespace BKB_RPG {
     [System.Serializable]
     public class GameEventCommand {
 
         public enum CommandTypes { Teleport = 1, Pause, UnPause, Wait, Script, Label, GoTo, If, Else, EndIf,
-            Shake, Tint, Transition, Debug, Letterbox, Message, Globals, Local, EntityEvent };
+            Shake, Tint, Transition, Debug, Letterbox, Message, Globals, Local, EntityEvent, ClearDialouge };
 
         public CommandTypes CommandID;
         public bool Block = false;
@@ -30,12 +31,24 @@ namespace BKB_RPG {
         public Gradient gradient;
         public Texture2D texture;
         public bool bool_1;            // TP, mesasge
+        public Sprite sprite;
+        public AnimatorOverrideController animationOverride;
+        [SerializeField]
+        public VoxData voxData;
+
+        public bool bool_2;
 
         // SCRIPT
         public UnityEvent scriptCalls;
 
         public int executionType = 0;
 
+        private bool _awaitingCallback;
+
+        private void CallbackComplete()
+        {
+            _awaitingCallback = false;
+        }
 
         public GameEventCommand(CommandTypes type) {
             SetEventCommand(type);
@@ -203,9 +216,8 @@ namespace BKB_RPG {
 
         void MessageCommand() {
             CommandID = CommandTypes.Message;
-            lines = 5;
-            string_1 = "";
-            bool_1 = false;
+            lines = 7;
+            voxData = new VoxData();
         }
 
         void GlobalCommand(bool global) {
@@ -226,6 +238,9 @@ namespace BKB_RPG {
             entity = null;  // target, null = self
             int_1 = 0;  // page, -1 for current
             int_2 = 0; // executtion trigger type
+            string_1 = ""; // JSON
+            sprite = null;
+            animationOverride = null;
         }
 
         void TypeCommand(CommandTypes t) {
@@ -258,10 +273,14 @@ namespace BKB_RPG {
                 yield return RunTransition();
                 break;
             case CommandTypes.Letterbox:
-                yield return GameMaster._instance.mainCamera.tintFader.LetterBox(executionType == 0, float_1, maxCutoff: float_2);
+                GameMaster._instance.mainCamera.tintFader.LetterBox(executionType == 0, float_1, maxCutoff: float_2);
+                yield return Wait(float_1);
                 break;
             case CommandTypes.Message:
                 yield return RunMessage();
+                break;
+            case CommandTypes.EntityEvent:
+                yield return RunEntityEventCommand();
                 break;
             case CommandTypes.Debug:
             case CommandTypes.Label:
@@ -274,15 +293,54 @@ namespace BKB_RPG {
 
         // TO DO - allow transition to be prepared to use
         IEnumerator RunTeleport() {
-            bool waiting = true;
             float fade = bool_1 ? 0 : 0.25f;
             string_1 = string_1 != "" ? string_1 : null;
             if (executionType == 0)
-                GameMaster.Teleport(string_1, () => { waiting = false; }, fade);
+                GameMaster.Teleport(string_1, CallbackComplete, fade);
             else
-                GameMaster.Teleport(vector3_1, string_1, () => { waiting = false; }, fade);
-            while (waiting)
+                GameMaster.Teleport(vector3_1, string_1, CallbackComplete, fade);
+            _awaitingCallback = true;
+            while (_awaitingCallback)
                 yield return null;
+        }
+
+        IEnumerator RunEntityEventCommand() {
+            var targetPage = entity.eventPages[entity.activePage];
+            switch (executionType)
+            {
+            case 0:     // Change execution type
+                var behaviour = (Entity.TriggerBehaviour)int_2;
+                if (int_1 == -2)
+                {
+                    foreach (var ep in entity.eventPages)
+                    {
+                        ep.trigger = behaviour;
+                    }
+                    yield return null;
+                }
+                int eventPage = int_1;
+                if (int_1 == -1)
+                    eventPage = entity.activePage;
+                entity.eventPages[eventPage].trigger = behaviour;
+                break;
+            case 1:     // Erase
+                entity.iDestroy();
+                break;
+            case 2:     // Set Move Route
+                var targetMover = targetPage.mover == null ? entity.gameObject.AddComponent<Mover>() : targetPage.mover;
+                targetMover.iLoad(string_1);
+                if (!Block)
+                    yield return null;
+                targetMover.SetCallback(CallbackComplete);
+                _awaitingCallback = true;
+                while (_awaitingCallback)
+                    yield return null;
+                break;
+            case 3:     // change sprite
+                entity.SetupImage(animationOverride, sprite);
+                break;
+            }
+            yield return null;
         }
 
         IEnumerator RunWait() {
@@ -294,9 +352,10 @@ namespace BKB_RPG {
 
         IEnumerator RunTint() {
             if (executionType == 0)
-                return GameMaster._instance.mainCamera.tintFader.Tint(color, float_1);
+                GameMaster._instance.mainCamera.tintFader.Tint(color, float_1);
             else
-                return GameMaster._instance.mainCamera.tintFader.Tint(gradient, float_1);
+                GameMaster._instance.mainCamera.tintFader.Tint(gradient, float_1);
+            yield return Wait(float_1);
         }
 
         IEnumerator RunTransition() {
@@ -306,16 +365,18 @@ namespace BKB_RPG {
             else if (int_1 == 2)
                 vec2 = vector2_1;
             if (executionType == 0)
-                return GameMaster._instance.mainCamera.tintFader.FadeOut(float_1, bool_1, color, texture, vec2);
+                GameMaster._instance.mainCamera.tintFader.FadeOut(float_1, bool_1, color, texture, vec2);
             else
-                return GameMaster._instance.mainCamera.tintFader.FadeIn(float_1, bool_1, texture, vec2);
+                GameMaster._instance.mainCamera.tintFader.FadeIn(float_1, bool_1, texture, vec2);
+            yield return Wait(float_1);
         }
 
         IEnumerator RunMessage() {
-            VoxBox.QueueMessage(string_1);
+            VoxBox.QueueMessage(voxData);
             bool wait = true;
-            VoxBox.PlayMessages(() => { wait = false; });
-            while (wait)
+            VoxBox.PlayMessages(CallbackComplete);
+            _awaitingCallback = true;
+            while (_awaitingCallback)
                 yield return null;
         }
 
@@ -392,9 +453,8 @@ namespace BKB_RPG {
             float lastTick = 0;
             while (true)
             {
-                if (gEvent._paused)
+                if (gEvent.parent.Paused)
                 {
-                    Debug.Log("paused");
                     lastTick = Time.time;
                     yield return null;
                 }

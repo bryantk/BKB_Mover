@@ -1,35 +1,45 @@
 ﻿using UnityEngine;
 
-class Repeater {
-    const float threshold = 0.01f;
-    const float rate = 0.01f;
-    float _next;
-    bool _hold;
-    string _axis;
+public class Repeater {
+    // Rate to re-trigger signal
+    private float _rate = 0.01f;
+    // Button name to listen for
+    private readonly string _axis;
 
-    public Repeater(string axisName) {
+    private readonly bool _isAxis;
+    private float _next;
+    
+
+    public float TriggerRate
+    {
+        set
+        {
+            _rate = Mathf.Max(value, 0.01f);
+            _next = Time.time + _rate;
+        }
+        get { return _rate; }
+    }
+
+    public Repeater(string axisName, bool isAxis = true) {
         _axis = axisName;
+        _isAxis = isAxis;
     }
 
     public int Update() {
-        int retValue = 0;
-        int value = Mathf.RoundToInt(Input.GetAxisRaw(_axis));
-
+        int value = _isAxis ? Mathf.RoundToInt(Input.GetAxisRaw(_axis)) : (Input.GetButton(_axis) ? 1 : 0);
         if (value != 0)
         {
             if (Time.time > _next)
             {
-                retValue = value;
-                _next = Time.time + (_hold ? rate : threshold);
-                _hold = true;
+                _next = Time.time + _rate;
+                return value;
             }
         }
         else
         {
-            _hold = false;
             _next = 0;
         }
-
-        return retValue;
+        return 0;
     }
+
 }

@@ -13,6 +13,9 @@ public class Drawer_Depth : Editor
 	}
 	
 	void OnSceneGUI() {
+        if (!myScript.enabled)
+            return;
+        // TODO - set static / dynamic?
 		Vector3 location = myScript.transform.position;
 		location.y += myScript.yOffset;
 		location = Handles.FreeMoveHandle(location, Quaternion.identity, 0.5f,

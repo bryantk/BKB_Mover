@@ -1,10 +1,11 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using BKB_TEXT;
 
 namespace BKB_RPG {
     [System.Serializable]
-    public class GameEvent : MonoBehaviour, IPauseable, ISetup {
+    public class GameEvent : MonoBehaviour, ISetup {
 
         [SerializeField]
         public List<GameEventCommand> commands;
@@ -14,21 +15,15 @@ namespace BKB_RPG {
         // NOTE - Probably not needed
         private Coroutine coroutine = null;
 
-        // readonly
-        public bool _paused;
-
         public Entity parent;
 
         public void iSetup(object o) {
             parent = (Entity)o;
         }
 
-        public void iPause() {
-            _paused = true;
-        }
-
-        public void iResume() {
-            _paused = false;
+        public bool IsRunning()
+        {
+            return EntityMaster.EntityCoroutineRunning(parent, runGlobaly);
         }
 
         public void Run() {
@@ -36,37 +31,33 @@ namespace BKB_RPG {
         }
 
         public void RunWithCallback(Callback onComplete=null) {
-            if (_paused)
+            if (IsRunning())
+                return;
+            if (parent.Paused)
             {
                 Debug.LogWarning(name + "'s GameEvent invoked, but it is PAUSED.");
                 return;
             }
+            coroutine = EntityMaster.AddCoroutine(parent, _Run(), runGlobaly);
             if (coroutine != null)
-            {
-                Debug.LogWarning(name + "'s GameEvent invoked while already running.");
-                return;
-            }
-            callback = onComplete;
-
-            EntityMaster.AddCoroutine(parent, _Run(), runGlobaly);
+                callback = onComplete;
         }
 
         void OnComplete()
         {
             EntityMaster.HaltCoroutine(parent);
             coroutine = null;
-            parent.SetEvaluateConditions(true);
+            parent.ShouldEvaluateConditions(true);
             if (callback != null)
                 callback();
         }
 
         public IEnumerator _Run() {
-            parent.SetEvaluateConditions(false);
-            GameEvent gameEventObject = runGlobaly ? null : this;
+            parent.ShouldEvaluateConditions(false);
             yield return null;
             for (int i = 0; i < commands.Count; i++)
             {
-                while (_paused)
+                while (parent.Paused)
                     yield return null;
                 // Run commands. Add case for editor/control related commands
                 var command = commands[i];
@@ -91,7 +82,14 @@ namespace BKB_RPG {
                     break;
                 case GameEventCommand.CommandTypes.Local:
                     // TODO - pass entity to this class and use UID in this key?
-                    command.RunGlobals(name + "_" + command.string_2);
+                    var key = "_" + command.string_2;
+                    if (parent.myGUID == 0)
+                    {
+                        Debug.LogError(string.Format("'{0}' attempted to save local key without a uGUI component.", name));
+                        command.RunGlobals(name + key);
+                        break;
+                    }
+                    command.RunGlobals(parent.myGUID + key);
                     break;
                 case GameEventCommand.CommandTypes.Pause:
                     command.RunPause();
@@ -102,7 +100,13 @@ namespace BKB_RPG {
                         yield break;
                     break;
                 case GameEventCommand.CommandTypes.EntityEvent:
-                    EntityEventCommand(command);
+                    //EntityEventCommand(command, i);
+                    if (command.entity == null)
+                        Debug.LogWarning(string.Format("No entity target set for command {0} of '{1}'. Target set to self as default. Is this intended?", i, name));
+                    yield return command.Run(this);
+                    break;
+                case GameEventCommand.CommandTypes.ClearDialouge:
+                    DialougeDisplay.CloseMessages();
                     break;
                 default:
                     yield return command.Run(this);
@@ -118,11 +122,14 @@ namespace BKB_RPG {
             return GameMaster._instance.stringParser.EvaluateBool(condition);
         }
 
-        private void EntityEventCommand(GameEventCommand command) {
+        private void EntityEventCommand(GameEventCommand command, int index) {
+            if (command.entity == null)
+                Debug.LogWarning(string.Format("No entity target set for command {0} of '{1}'. Target set to self as default. Is this intended?", index, name));
             Entity target = command.entity != null ? command.entity : parent;
+            var targetPage = target.eventPages[target.activePage];
             switch (command.executionType)
             {
-            case 0:
+            case 0:     // Change execution type
                 var behaviour = (Entity.TriggerBehaviour)command.int_2;
                 if (command.int_1 == -2)
                 {
@@ -137,8 +144,16 @@ namespace BKB_RPG {
                     eventPage = target.activePage;
                 target.eventPages[eventPage].trigger = behaviour;
                 break;
-            case 1:
-                target.iDestory();
+            case 1:     // Erase
+                target.iDestroy();
+                break;
+            case 2:     // Set Move Route
+                
+                var targetMover = targetPage.mover == null ? target.gameObject.AddComponent<Mover>() : targetPage.mover;
+                targetMover.iLoad(command.string_1);
+                break;
+            case 3:     // change sprite
+                target.SetupImage(command.animationOverride, command.sprite);
                 break;
             }
         }

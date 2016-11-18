@@ -6,6 +6,7 @@ using BKB_RPG;
 using System.IO;
 
 [CustomEditor(typeof(Entity))]
+[CanEditMultipleObjects]
 public class Drawer_Entity : Editor
 {
     Entity myScript;
@@ -14,8 +15,10 @@ public class Drawer_Entity : Editor
 
     float buttonWidth = 40;
     float buttonHeight = 21;
-	
-	void OnEnable() {
+
+    private int pagesToShow;
+
+    void OnEnable() {
 		myScript = target as Entity;
         if (myScript.eventPages == null)
             myScript.eventPages = new System.Collections.Generic.List<Entity.EntityPageData>();
@@ -25,30 +28,23 @@ public class Drawer_Entity : Editor
 
     public override void OnInspectorGUI() {
         serializedObject.Update();
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("m_Script"),
-            true, new GUILayoutOption[0]);
-
-        GUILayout.BeginHorizontal();
-        if (myScript.UID != -1)
-        {
-            EditorGUILayout.LabelField("UID", myScript.UID.ToString());
-        }
-        if (GUILayout.Button("Generate UID"))
-        {
-            myScript.UID = GenerateUID();
-        }
-        GUILayout.EndHorizontal();
-
-        int pagesToShow = (int)(Screen.width / buttonWidth) - 2;
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("m_Script"), true, new GUILayoutOption[0]);
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("Active Page", myScript.activePage.ToString(), EditorStyles.boldLabel);
+        pagesToShow = (int)(Screen.width / buttonWidth) - 2;
         EditorGUILayout.LabelField("Page", string.Format("Showing {0}-{1} of {2}", firstPage, Mathf.Min(firstPage + pagesToShow, myScript.eventPages.Count)-1, myScript.eventPages.Count));
 
         Rect header = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.Height(21));
         float end = header.x + buttonWidth * (pagesToShow + 1) + 2;
         Rect button = new Rect(header.x + 2, header.y, buttonWidth-2, buttonHeight);
-        GUI.Box(new Rect(button.x + 16, button.y + 2, button.width - 16, button.height - 4), "<");
-        SubMenu(button, () => {
-            firstPage -= firstPage <= 0 ? 0 : 1;
-        });
+        // Show left arrow
+        if (firstPage > 0)
+        {
+            GUI.Box(new Rect(button.x + 16, button.y + 2, button.width - 16, button.height - 4), "<");
+            SubMenu(button, () => {
+                firstPage -= 1;
+            });
+        }
         button.x += buttonWidth;
 
         for (int i = 0; i < pagesToShow; i++)
@@ -79,26 +75,39 @@ public class Drawer_Entity : Editor
             }
         }
         button.x = end;
-        GUI.Box(new Rect(button.x, button.y + 2, button.width - 16, button.height - 4), ">");
-        SubMenu(button, () => {
-            firstPage += firstPage + pagesToShow < myScript.eventPages.Count + 1 ? 1 : 0;
-        });
-
-        EditorGUILayout.LabelField("Page " + selectedPage.ToString());
+        // Show Right arrow
+        if (firstPage + pagesToShow < myScript.eventPages.Count + 1)
+        {
+            GUI.Box(new Rect(button.x, button.y + 2, button.width - 16, button.height - 4), ">");
+            SubMenu(button, () => {
+                firstPage += 1;
+            });
+        }
+        // Show page info
+        EditorGUI.indentLevel = 1;
+        EditorGUILayout.LabelField("Page " + selectedPage, EditorStyles.boldLabel);
         SerializedProperty page = serializedObject.FindProperty("eventPages").GetArrayElementAtIndex(selectedPage);
-
         EditorGUILayout.PropertyField(page.FindPropertyRelative("condition"));
         EditorGUILayout.PropertyField(page.FindPropertyRelative("trigger"));
-        EditorGUILayout.PropertyField(page.FindPropertyRelative("rate"));
-        if (GUI.Button(new Rect(100, header.y + 95, 30, 15), "Get"))
+
+        EditorGUILayout.PropertyField(page.FindPropertyRelative("controller"));
+        EditorGUILayout.PropertyField(page.FindPropertyRelative("sprite"));
+        EditorGUILayout.PropertyField(page.FindPropertyRelative("facing"));
+
+        if (GUI.Button(new Rect(100, header.y + 135, 30, 15), "Get"))
             myScript.eventPages[selectedPage].gameEvent = myScript.GetComponent<GameEvent>();
         EditorGUILayout.PropertyField(page.FindPropertyRelative("gameEvent"));
-        if (GUI.Button(new Rect(100, header.y + 113, 30, 15), "Get"))
+        if (GUI.Button(new Rect(100, header.y + 155, 30, 15), "Get"))
             myScript.eventPages[selectedPage].mover = myScript.GetComponent<Mover>();
-        EditorGUILayout.PropertyField(page.FindPropertyRelative("mover"));
+        var moverTooltip = "Assign a mover script.";
+        var mover = myScript.eventPages[selectedPage].mover;
+        if (mover != null)
+        {
+            moverTooltip = string.Format("'{0}' on game object '{1}'", mover.moverName, mover.name);
+        }
+        EditorGUILayout.PropertyField(page.FindPropertyRelative("mover"),
+            new GUIContent("Mover", moverTooltip));
         EditorGUILayout.PropertyField(page.FindPropertyRelative("useCollider"));
-        EditorGUILayout.Space();
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("activePage"));
         serializedObject.ApplyModifiedProperties();
 
     }
@@ -117,7 +126,8 @@ public class Drawer_Entity : Editor
             {
                 // Right Click
                 GenericMenu menu = new GenericMenu();
-                //menu.AddItem(new GUIContent("Cut"), false, Copy, new object[] { id, true });
+                if (myScript.eventPages.Count > 1)
+                    menu.AddItem(new GUIContent("Cut"), false, Copy, new object[] { id, true });
                 //menu.AddItem(new GUIContent("Copy"), false, Copy, new object[] { id, false });
                 if (EditorPrefs.GetString("BKBMoverCopyData") == "")
                     menu.AddDisabledItem(new GUIContent("Paste"));
@@ -141,29 +151,25 @@ public class Drawer_Entity : Editor
         }
     }
 
-    int GenerateUID() {
-        
-        int uid = 0;
-        string filepath = Application.dataPath.Replace("Assets", "UID.txt");
-        try
-        {   // Open the text file using a stream reader.
-            using (StreamReader sr = new StreamReader(filepath))
+    void Copy(object data)
+    {
+        object[] datum = data as object[];
+        int page = System.Convert.ToInt32(datum[0]);
+        bool delete = System.Convert.ToBoolean(datum[1]);
+        // TODO - implement serialization of page
+
+        if (delete)
+        {
+            if (selectedPage == myScript.eventPages.Count - 1)
             {
-                // Read the stream to a string, and write the string to the console.
-                string line = sr.ReadToEnd();
-                int.TryParse(line, out uid);
+                selectedPage--;
+            }
+            myScript.eventPages.RemoveAt(page);
+            if (myScript.eventPages.Count - 1 < pagesToShow)
+            {
+                firstPage = 0;
             }
         }
-        catch (System.Exception e)
-        {
-            uid = 0;
-        }
-        uid++;
-        using (System.IO.StreamWriter file = new System.IO.StreamWriter(@filepath))
-        {
-            file.WriteLine(uid.ToString());
-        }
-        return uid;
     }
 
 }

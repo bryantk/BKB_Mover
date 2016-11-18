@@ -1,9 +1,13 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 
 namespace BKB_RPG {
 	public static class Utils {
+
+
+        public const float LOOK_AHEAD = 0.1f;
 
         /// <summary>
         /// Like Unity RaycastHit2D, but casts 1 to many rays from center to teh width of the collider.
@@ -11,40 +15,43 @@ namespace BKB_RPG {
         /// <param name="position">Center of Entity</param>
         /// <param name="castDir">Direction to cast</param>
         /// <param name="rays"># of rays to cast</param>
-        /// <param name="spread">Distance between rays modifier.</param>
+        /// <param name="radius">Radius of transform. Cast will atempt to start out of the radius.</param>
         /// <param name="lookAhead">Extra Distance to cast for colissiosn immediatly ahead.</param>
         /// <param name="self">Optional transform to ignore collisions against</param>
         /// <param name="layers">Layers to raycast against</param>
+        /// <param name="spread"> Extra distance between rays.</param>
         /// <param name="minDepth">Only include objects with a Z coordinate (depth) greater than or equal to this value.</param>
         /// <param name="maxDepth">Only include objects with a Z coordinate (depth) less than or equal to this value.</param>
         /// <returns></returns>
-		public static RaycastHit2D Raycast(Vector2 position, Vector2 castDir, int rays=1, float spread=1,
-		                                   float lookAhead=0.5f, Transform self=null, int layers=Physics2D.DefaultRaycastLayers,
-                                           float minDepth=-Mathf.Infinity, float maxDepth=Mathf.Infinity) {
+		public static RaycastHit2D Raycast(Vector2 position, Vector2 castDir, float radius = 0.5f, int rays = 2,
+                                           float lookAhead= LOOK_AHEAD, Transform self=null, int layers=Physics2D.DefaultRaycastLayers,
+                                           float spread = 0, float minDepth=-Mathf.Infinity, float maxDepth=Mathf.Infinity) {
             // spread = collider.radius * spread
             // lookAhead = collider.radius + speed * stop_range
             // move compare location slightly forward to prevent hitting own collider.
             if (layers == 0)
                 return new RaycastHit2D();
-			position += castDir * 0.025f;
-			Debug.DrawLine(position, position + castDir * lookAhead, Color.yellow);
+            lookAhead += radius;
+            //position += castDir * radius;
+            Debug.DrawLine(position, position + castDir * lookAhead, Color.yellow);
 			RaycastHit2D hit = Physics2D.Raycast(position, castDir, lookAhead, layers);
 			if ((hit || rays == 1) && hit.transform != self)
 				return hit;
 			Vector2 offset = Vector3.Cross(castDir.normalized, Vector3.forward);
-			float step = 1f/(rays-1);
+            offset *= radius;
+            float step = 1f/(rays-1);
 			for (float x = 1; x > 0; x -= step) {
-				float decay = 1 - 0.25f * x * x;
-				// right side
-				Vector2 test_location = position + offset * x * spread;
-				Debug.DrawLine(test_location, test_location + castDir * lookAhead * decay, Color.yellow);
-				hit = Physics2D.Raycast(test_location, castDir, lookAhead * decay, layers, minDepth, maxDepth);
+                Vector2 offsetVector = offset * (x + spread);
+                // right side
+                Vector2 test_location = position + offsetVector;
+				Debug.DrawLine(test_location, test_location + castDir * lookAhead, Color.yellow);
+				hit = Physics2D.Raycast(test_location, castDir, lookAhead, layers, minDepth, maxDepth);
 				if (hit && hit.transform != self)
 					return hit;
 				// left side
-				test_location = position - offset * x * spread;
-				Debug.DrawLine(test_location, test_location + castDir * lookAhead * decay, Color.yellow);
-				hit = Physics2D.Raycast(test_location, castDir, lookAhead * decay, layers);
+				test_location = position - offsetVector;
+				Debug.DrawLine(test_location, test_location + castDir * lookAhead, Color.yellow);
+				hit = Physics2D.Raycast(test_location, castDir, lookAhead, layers);
 				if (hit && hit.transform != self)
 					return hit;
 			}
@@ -95,6 +102,7 @@ namespace BKB_RPG {
         /// <param name="v">Vector to convert.</param>
         /// <returns></returns>
         public static float Vector2toAngle(Vector2 v) {
+            // TODO - not correct for 1,0 and 0,-1
             if (v == Vector2.zero)
                 return 0;
             float angle = Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg - 90f;

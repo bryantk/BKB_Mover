@@ -1,8 +1,13 @@
-﻿using UnityEngine;
+﻿using System;
+using System.CodeDom;
+using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
 using UnityEditor;
 using UnityEditorInternal;
 using BKB_RPG;
+using BKB_TEXT;
 using SimpleJSON;
 
 [CustomEditor(typeof(GameEvent))]
@@ -100,6 +105,7 @@ public class Drawer_GameEvent : Editor {
                 command.SetEventCommand(command.CommandID);
             // Draw command data   
             DrawCommand(rect, element, command, index);
+            serializedObject.ApplyModifiedProperties();
             if (command.CommandID == GameEventCommand.CommandTypes.If || command.CommandID == GameEventCommand.CommandTypes.Else)
                 tabLevel++;
             #endregion
@@ -289,8 +295,13 @@ public class Drawer_GameEvent : Editor {
 
         case GameEventCommand.CommandTypes.Tint:
             rect.x += 120;
-            EditorGUI.PropertyField(new Rect(rect.x, rect.y, 200, EditorGUIUtility.singleLineHeight),
-                                    element.FindPropertyRelative("Block"), new GUIContent("Block:"));
+            //EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight),
+            //                        element.FindPropertyRelative("Block"), new GUIContent("Block:"));
+
+            EditorGUI.LabelField(new Rect(rect.x, rect.y, 50, EditorGUIUtility.singleLineHeight), "Block");
+            EditorGUI.PropertyField(new Rect(tabedWidth + 15, rect.y, 10, EditorGUIUtility.singleLineHeight),
+                                element.FindPropertyRelative("Block"), new GUIContent(""));
+
             if (!command.expanded)
                 return;
             rect.x -= 120;
@@ -431,7 +442,7 @@ public class Drawer_GameEvent : Editor {
             rect2 = rect;
             rect2.width = tabedWidth - 120;
             command.executionType = EditorGUI.IntPopup(rect2, command.executionType,
-                new string[] { "Set Execution", "Erase" }, new int[] { 0, 1 });
+                new string[] { "Set Execution", "Erase", "Move Command", "Sprite or Anim" }, new int[] { 0, 1, 2, 3 });
             if (!command.expanded)
                 return;
             rect.x -= 120;
@@ -439,28 +450,115 @@ public class Drawer_GameEvent : Editor {
 
             EditorGUI.PropertyField(new Rect(rect.x + 30, rect.y, 140, EditorGUIUtility.singleLineHeight),
                                         element.FindPropertyRelative("entity"), new GUIContent(""));
-
-            if (command.executionType == 0)
+            command.lines = 2;
+            switch (command.executionType)
             {
+            case 0:
                 command.int_1 = EditorGUI.IntField(new Rect(rect.x + 175, rect.y, 40, EditorGUIUtility.singleLineHeight), command.int_1);
                 int limit = 0;
                 if (command.entity == null)
                     limit = myScript.gameObject.GetComponent<Entity>().eventPages.Count - 1;
                 else
                     limit = command.entity.eventPages.Count - 1;
-                command.int_1 = Mathf.Clamp(command.int_1, - 2, limit);
+                command.int_1 = Mathf.Clamp(command.int_1, -2, limit);
                 command.int_2 = EditorGUI.IntPopup(new Rect(rect.x + 220, rect.y, tabedWidth - 220, EditorGUIUtility.singleLineHeight),
                 command.int_2, new string[] { "OnButtonPress", "PlayerTouch", "EventTouch", "Always", "Once", "Each", "None" }, new int[] { 0, 1, 2, 3, 4, 5, 6 });
+                break;
+            case 2:
+                command.lines = 3;
+                EditorGUI.LabelField(new Rect(rect.x + 175, rect.y, 50, EditorGUIUtility.singleLineHeight), "Block");
+                EditorGUI.PropertyField(new Rect(tabedWidth + 15, rect.y,  10, EditorGUIUtility.singleLineHeight),
+                                    element.FindPropertyRelative("Block"), new GUIContent(""));
+                rect.y += EditorGUIUtility.singleLineHeight + 3;
+                command.string_1 = EditorGUI.TextField(new Rect(rect.x + 30, rect.y, tabedWidth - 30, EditorGUIUtility.singleLineHeight), command.string_1);
+                break;
+            case 3:
+                command.lines = 4;
+                rect.y += EditorGUIUtility.singleLineHeight + 3;
+                rect.x += 30;
+                EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth - 30, EditorGUIUtility.singleLineHeight),
+                                        element.FindPropertyRelative("animationOverride"), new GUIContent("Anim"));
+                rect.y += EditorGUIUtility.singleLineHeight + 3;
+                EditorGUI.PropertyField(new Rect(rect.x, rect.y, tabedWidth - 30, EditorGUIUtility.singleLineHeight),
+                                        element.FindPropertyRelative("sprite"), new GUIContent("Sprite"));
+                break;
             }
             break;
 
         case GameEventCommand.CommandTypes.Message:
             rect.x += 120;
-            Rect r2 = new Rect(rect.x, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight);
+            Rect r2 = new Rect(rect.x, rect.y, tabedWidth - 120, EditorGUIUtility.singleLineHeight - 2);
             if (command.expanded)
-                r2.height *= command.lines;
-            command.string_1 = EditorGUI.TextArea(r2, command.string_1);
-            command.lines = command.string_1.Split('\n').Length;
+                r2.height *= 4;
+            element = element.FindPropertyRelative("voxData");
+            VoxData data = command.voxData;
+            data.message = EditorGUI.TextArea(r2, data.message);
+            if (!command.expanded)
+                break;
+
+            rect.x -= 120;
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+            data.position = (MessageLocation)EditorGUI.IntPopup(new Rect(rect.x + 40, rect.y, 60, EditorGUIUtility.singleLineHeight),
+                            (int)data.position, new string[] { "Top", "Middle", "Bottom", "Auto", "Custom" }, new int[] { 0, 1, 2, 3, 4});
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+
+            EditorGUI.LabelField(new Rect(rect.x + 30, rect.y,  50, EditorGUIUtility.singleLineHeight), new GUIContent("Name", "Leave blank to not show."));
+            EditorGUI.PropertyField(new Rect(rect.x + 80, rect.y, 100, EditorGUIUtility.singleLineHeight), element.FindPropertyRelative("name"), new GUIContent(""));
+            data.nameLocation = (HorizontalAlignment)EditorGUI.IntPopup(new Rect(rect.x + tabedWidth - 60, rect.y, 60, EditorGUIUtility.singleLineHeight),
+                                (int)data.nameLocation, new string[] { "Left", "Center", "Right" }, new int[] { 0, 1, 2 });
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+            // BG
+            EditorGUI.LabelField(new Rect(rect.x + 30, rect.y, 20, EditorGUIUtility.singleLineHeight), new GUIContent("BG", "Use window BG, or leave transparent?"));
+            EditorGUI.PropertyField(new Rect(rect.x + 55, rect.y, 20, EditorGUIUtility.singleLineHeight),
+                                        element.FindPropertyRelative("useTexture"), new GUIContent());
+            // Text Sound
+            EditorGUI.LabelField(new Rect(rect.x + 80, rect.y, 50, EditorGUIUtility.singleLineHeight), new GUIContent("Sound", "Use sound per character?"));
+            EditorGUI.PropertyField(new Rect(rect.x + 125, rect.y, 20, EditorGUIUtility.singleLineHeight),
+                                        element.FindPropertyRelative("useSound"), new GUIContent());
+            // No Tear Down
+            EditorGUI.LabelField(new Rect(rect.x + 150, rect.y, 80, EditorGUIUtility.singleLineHeight), new GUIContent("No TearDown", "Use sound per character?"));
+            EditorGUI.PropertyField(new Rect(rect.x + 230, rect.y, 30, EditorGUIUtility.singleLineHeight),
+                                        element.FindPropertyRelative("noTearDown"), new GUIContent());
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+
+            if (command.voxData.hasChoices)
+            {
+                GUI.Box(new Rect(rect.x + 10, rect.y, tabedWidth - 20, (EditorGUIUtility.singleLineHeight + 2) * (command.voxData.choices.Count + 2)), "");
+            }
+                
+
+            command.voxData.hasChoices = EditorGUI.Foldout(new Rect(rect.x + 30, rect.y, 20, 20), command.voxData.hasChoices, "Choices");
+            if (command.voxData.hasChoices)
+            {
+                command.lines = 8 + command.voxData.choices.Count;
+                
+                EditorGUI.LabelField(new Rect(rect.x + 120, rect.y, 70, EditorGUIUtility.singleLineHeight), new GUIContent("Default", "Use sound per character?"));
+                EditorGUI.PropertyField(new Rect(rect.x + 190, rect.y, 40, EditorGUIUtility.singleLineHeight),
+                                            element.FindPropertyRelative("defaultChoice"), new GUIContent());
+                command.voxData.defaultChoice = Mathf.Clamp(command.voxData.defaultChoice, -1, command.voxData.choices.Count - 1);
+                rect.y += EditorGUIUtility.singleLineHeight + 2;
+                for (int j = 0; j < command.voxData.choices.Count; j++)
+                {
+                    command.voxData.choices[j] = EditorGUI.TextField(new Rect(rect.x + 30, rect.y, tabedWidth - 50, EditorGUIUtility.singleLineHeight), j.ToString(), command.voxData.choices[j]);
+                    if (GUI.Button(new Rect(rect.x + 70, rect.y, 70, EditorGUIUtility.singleLineHeight), "remove"))
+                    {
+                        command.voxData.choices.RemoveAt(j);
+                    }
+                    rect.y += EditorGUIUtility.singleLineHeight + 2;
+                }
+                if (GUI.Button(new Rect(tabedWidth - 10, rect.y, 20, EditorGUIUtility.singleLineHeight), "+"))
+                {
+                    command.voxData.choices.Add("NEW");
+                }
+            }
+            else
+            {
+                command.lines = 7;
+            }
+            rect.y += EditorGUIUtility.singleLineHeight + 3;
+            EditorGUI.PropertyField(new Rect(rect.x + 30, rect.y, tabedWidth - 30, EditorGUIUtility.singleLineHeight), element.FindPropertyRelative("JSON"), new GUIContent("JSON"));
+
             break;
 
         }

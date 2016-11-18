@@ -7,7 +7,6 @@ using BKB_RPG;
 public class StringParser : MonoBehaviour, ISetup {
 
     public Evaluator jsEval;
-    public string test;
 
     const string symbols = "+-*/<>=&|!()";
 	
@@ -21,7 +20,6 @@ public class StringParser : MonoBehaviour, ISetup {
             return false;
         if (parsed == "1")
             return true;
-        print(parsed);
         return (bool)jsEval.Evaluate(parsed);
     }
 
@@ -59,12 +57,19 @@ public class StringParser : MonoBehaviour, ISetup {
             //print(results[i]);
             if (results[i].Length == 1 && symbols.Contains(results[i]))
                 continue;
+            switch (results[i])
+            {
+            case "choice":
+                results[i] = GameVariables.GetFloat("MessageChoice").ToString();
+                break;
+            }
             if (results[i].Contains('.') && !IsFloat(results[i]))
             {
                 string[] parts = results[i].Split('.');
                 // Send each pice to be evalueated/drill down
                 switch (parts[0].ToLower())
                 {
+                
                 case "global":
                 case "g":
                     results[i] = Globals(parts[1], parts.Length > 2 ? parts[2] : null);

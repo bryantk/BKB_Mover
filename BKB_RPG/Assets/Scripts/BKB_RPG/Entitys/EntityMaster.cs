@@ -66,28 +66,41 @@ namespace BKB_RPG {
             coroutineOwner = null;
         }
 
-        public static void AddCoroutine(Entity entity, IEnumerator coroutine, bool parallel = false)
+        public static bool EntityCoroutineRunning(Entity entity, bool Parralel = false)
+        {
+            return Parralel ? parallelCoroutines.ContainsKey(entity) : coroutineOwner == entity;
+        }
+
+        public static Coroutine AddCoroutine(Entity entity, IEnumerator coroutine, bool parallel = false)
         {
             if (parallel)
             {
                 if (parallelCoroutines.ContainsKey(entity))
                 {
                     Debug.LogWarning(string.Format("2 - Failed to launch {0}'s Parallel Coroutine. Already in progress.", entity.name));
+                    return null;
                 }
                 else
                 {
-                    parallelCoroutines.Add(entity, _instance.StartCoroutine(coroutine));
+                    Coroutine c = _instance.StartCoroutine(coroutine);
+                    parallelCoroutines.Add(entity, c);
+                    return c;
                 }
             }
             else
             {
                 if (activeCoroutine == null)
                 {
-                    activeCoroutine = _instance.StartCoroutine(coroutine);
+                    Coroutine c = _instance.StartCoroutine(coroutine);
+                    activeCoroutine = c;
                     coroutineOwner = entity;
+                    return c;
                 }
                 else
+                {
                     Debug.LogWarning(string.Format("1 - Failed to launch {0}'s Lone Coroutine. Another in progress.", entity.name));
+                    return null;
+                }
             }
         }
 

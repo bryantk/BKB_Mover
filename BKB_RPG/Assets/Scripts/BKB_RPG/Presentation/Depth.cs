@@ -2,40 +2,37 @@
 
 namespace BKB_RPG {
 	public class Depth : MonoBehaviour {
-        // Where is the 'base' of the object relative to its origin
-		public float yOffset;
-        // Will this object be moving? (and thus need to re-calculate z-depth)
-		public bool Moves = false;
-
         // Divide Y position by this to 'flatten' the z-depth
-        const float field_depth = 10f;
-        // Number of frames to wait to update a 'mover's z-depth
-        // TODO - make as a compnent of Entity / a Manager - only call update X frames
-        const int sleep_frames = 10;
+        const float FIELD_DEPTH = 10f;
 
-        int _sleep = 0;
-		
+        // Where is the 'base' of the object relative to its origin
+        public float yOffset;
+        // Will this object be moving? (and thus need to re-calculate z-depth)
+		public bool Moves = true;
+        // For dynamic things (walking over bridge, pick up item, fly, etc)
+        public float DynamicOffset = 0;
 
-		void Start () {
+        private TickCounter frameCounter = new TickCounter(30);
+
+        void OnEnable () {
 			DrawDepth();
-		}
+            enabled = Moves;
+        }
 		
-		// Update is called once per frame
-		void Update () {
-            if (!Moves)
-                return;
-            if (_sleep <= 0)
+		// TODO - Should this tie into Enties?
+		void Update ()
+		{
+		    if (!enabled)
+		        return;
+            if (frameCounter.Tick)
             {
                 DrawDepth();
-                _sleep = sleep_frames;
             }
-            _sleep--;
 		}
-
 		
 		public void DrawDepth() {
 			Vector3 temp = transform.position;
-			temp.z = (temp.y + yOffset) / field_depth;
+			temp.z = (temp.y + yOffset + DynamicOffset) / FIELD_DEPTH;
 			transform.position = temp;
 		}
 		

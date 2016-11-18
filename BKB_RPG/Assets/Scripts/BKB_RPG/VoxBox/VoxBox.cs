@@ -6,6 +6,10 @@ using System.Collections.Generic;
 
 public class VoxBox : MonoBehaviour {
 
+    public Color NormalColor;
+    public Color HighlightColor;
+    public Color DisabledColor;
+
     static private Queue<object> messageQueue;
     static private object currentMessage;
     public delegate void voidHandler();

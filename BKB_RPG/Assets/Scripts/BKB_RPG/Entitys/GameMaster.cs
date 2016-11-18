@@ -83,10 +83,10 @@ namespace BKB_RPG {
             levelData.currentLevel = FindObjectOfType<LevelMaster>();
             if (levelData.currentLevel != null)
                 levelData.currentLevel.SetupLevel();
-            
 
             playerData.playerEntity.iSetup(this);
-            mainCamera.ReParent(playerData.gameObject.transform);
+
+            mainCamera.ReParent(mainCamera.target);
             // TODO - load from save
             mainCamera.tintFader.FadeIn(0);
             mainCamera.tintFader.Tint(Color.clear, 0);
@@ -186,7 +186,11 @@ namespace BKB_RPG {
         static IEnumerator _Teleport(Vector3 position, string levelNameToLoad, string label, float timeOut = 0.25f, float timeIn = 0.25f) {
             BKB_FSM.StateManager.Push("TP");
             if (timeOut > 0)
-                yield return _instance.mainCamera.tintFader.FadeOut(timeOut);
+            {
+                _instance.mainCamera.tintFader.FadeOut(timeOut);
+                yield return new WaitForSeconds(timeOut);
+            }
+                
 
             if (levelNameToLoad != null && levelNameToLoad != levelData.name)
                 yield return LoadLevel(levelNameToLoad);
@@ -195,7 +199,10 @@ namespace BKB_RPG {
             SetPartyPosition(position);
 
             if (timeIn > 0)
-                yield return _instance.mainCamera.tintFader.FadeIn(timeIn);
+            {
+                _instance.mainCamera.tintFader.FadeIn(timeIn);
+                yield return new WaitForSeconds(timeIn);
+            }
             BKB_FSM.StateManager.Pop();
             if (TPCallback != null)
                 TPCallback();

@@ -16,6 +16,10 @@ public class Drawer_Mover : Editor
     Mover myScript;
 
     // settings
+    public bool showOptions;
+    public bool showCollisionOptions;
+    public bool showAdvancedOptions;
+
     GUIStyle style;
     string json;
     HashSet<int> selected = new HashSet<int>();
@@ -27,16 +31,14 @@ public class Drawer_Mover : Editor
     static Color highlightGrey = new Color(0.3f, 0.3f, 0.3f, 0.1f);
 
     void OnEnable() {
-        
-        ReordableList();
-
         myScript = target as Mover;
+        ReordableList();
+        
         style = new GUIStyle();
         style.normal.textColor = Color.white;
         style.fontSize = 8;
 
         Rigidbody2D r = myScript.GetComponent<Rigidbody2D>();
-        r.isKinematic = true;
         r.gravityScale = 0;
 
         int master_count = FindObjectsOfType<EntityMaster>().Length;
@@ -126,7 +128,7 @@ public class Drawer_Mover : Editor
                     break;
                 }
                 lastPos = target;
-                if (myScript.advanceDebugDraw && command.move_type != MovementCommand.MoverTypes.Angle)
+                if ( command.move_type != MovementCommand.MoverTypes.Angle)
                 {
                     // Within Distance.
                     Vector3 withinRadius = lastPos + new Vector3(command.withinDistance, 0, 0);
@@ -231,9 +233,7 @@ public class Drawer_Mover : Editor
 		// Follow this template
 		serializedObject.Update();
         DrawHeaderInfo();
-        // TODO - house in a scroll view?
         list.DoLayoutList();
-
         serializedObject.ApplyModifiedProperties();
         SceneView.RepaintAll();
     }
@@ -506,7 +506,7 @@ public class Drawer_Mover : Editor
             break;
         case MovementCommand.CommandTypes.GoTo:
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight),
-                                    element.FindPropertyRelative("gotoId"), new GUIContent("Command"));
+                                    element.FindPropertyRelative("int_1"), new GUIContent("Command"));
             command.int_1 = Mathf.Clamp(command.int_1, 0, myScript.commands.Count - 1);
             break;
         case MovementCommand.CommandTypes.Boolean:
@@ -514,8 +514,6 @@ public class Drawer_Mover : Editor
                                     element.FindPropertyRelative("flag"), GUIContent.none);
             EditorGUI.PropertyField(new Rect(rect.x + 160, rect.y, 60, EditorGUIUtility.singleLineHeight),
                                     element.FindPropertyRelative("Bool"), GUIContent.none);
-            if (command.flag == MovementCommand.FlagType.Pause)
-                command.Bool = true;
             break;
         case MovementCommand.CommandTypes.Script:
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight),
@@ -527,8 +525,8 @@ public class Drawer_Mover : Editor
             break;
         case MovementCommand.CommandTypes.Remove:
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight),
-                                    element.FindPropertyRelative("gotoId"), new GUIContent("# to Remove"));
-            command.int_1 = Mathf.Clamp(command.int_1, 0, myScript.commands.Count - 1);
+                                    element.FindPropertyRelative("int_1"), new GUIContent("# to Remove"));
+            command.int_1 = Mathf.Clamp(command.int_1, 1, myScript.commands.Count - 1);
             command.lines++;
             rect.y += EditorGUIUtility.singleLineHeight + 3;
             EditorGUI.PropertyField(new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight),
@@ -580,7 +578,9 @@ public class Drawer_Mover : Editor
     void DrawHeaderInfo() {
         EditorGUILayout.PropertyField(serializedObject.FindProperty("m_Script"),
             true, new GUILayoutOption[0]);
-        GUILayout.Label("Status", EditorStyles.boldLabel);
+        EditorGUILayout.Space();
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("moverName"),
+            new GUIContent("Tag", "Tag to distinguish from other movers."));
         EditorGUILayout.PropertyField(serializedObject.FindProperty("directions"),
             new GUIContent("Directions", "4 cardinal directions, 8, or 360 degrees of freedom."));
         EditorGUILayout.PropertyField(serializedObject.FindProperty("move_speed"),
@@ -592,8 +592,8 @@ public class Drawer_Mover : Editor
         EditorGUI.indentLevel = 1;
         
 
-        myScript.showSettings = EditorGUILayout.Foldout(myScript.showSettings, "Options");
-        if (myScript.showSettings)
+        showOptions = EditorGUILayout.Foldout(showOptions, "Options");
+        if (showOptions)
         {
             EditorGUILayout.PropertyField(serializedObject.FindProperty("repeat"), new GUIContent("Repeat",
                 "Repeat loops to start. Ping-pong advances to end, then start, then end. ResetAndLoop reverts to start position and then loops."));
@@ -605,29 +605,13 @@ public class Drawer_Mover : Editor
                 new GUIContent("Lock Facing", "Facing will not change when true."));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("ignore_impossible"),
                 new GUIContent("Skip Impossible", "On impossible move commands, advance to next command."));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("slide"), new GUIContent("Slide on hit?"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("affectedBySlope"),
                 new GUIContent("Affected by Slope", "Slope areas will affect this mover?"));
         }
-        // Advanced Options
-        myScript.showOptions = EditorGUILayout.Foldout(myScript.showOptions, "Advanced");
-        if (myScript.showOptions)
+        // Collider Options
+        showCollisionOptions = EditorGUILayout.Foldout(showCollisionOptions, "Collision Options");
+        if (showCollisionOptions)
         {
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("anim"),
-                new GUIContent("Animator", "Assigned on startup if null."));
-
-            // myScript.collisionMask = EditorGUILayout.LayerField(new GUIContent("Collides", "Layers to collide with"), myScript.collisionMask);
-            myScript.collisionLayerMask = Utils.LayerMaskField("Collision Layers", myScript.collisionLayerMask);
-
-
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("advanceDebugDraw"),
-                new GUIContent("Advanced Debug", "Show advanced options in inspector GUI."));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("compelete"),
-                new GUIContent("Paused", "Paused - Do not proccess commands."));
-
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Collision Settings:");
-            EditorGUI.indentLevel = 2;
             serializedObject.FindProperty("spread").floatValue =
                 EditorGUILayout.Slider("Spread %:", serializedObject.FindProperty("spread").floatValue, 0.5f, 3);
             serializedObject.FindProperty("stop_range").floatValue =
@@ -636,7 +620,17 @@ public class Drawer_Mover : Editor
                 EditorGUILayout.Slider("Radius", serializedObject.FindProperty("radius").floatValue, 0, 10);
             serializedObject.FindProperty("ray_density").intValue =
                 EditorGUILayout.IntSlider("Ray Count", serializedObject.FindProperty("ray_density").intValue, 1, 5);
+        }
+        // Advanced Options
+            showAdvancedOptions = EditorGUILayout.Foldout(showAdvancedOptions, "Advanced Options");
+        if (showAdvancedOptions)
+        {
+            // myScript.collisionMask = EditorGUILayout.LayerField(new GUIContent("Collides", "Layers to collide with"), myScript.collisionMask);
+            myScript.collisionLayerMask = Utils.LayerMaskField("Collision Layers", myScript.collisionLayerMask);
 
+            EditorGUI.indentLevel = 2;
+
+            EditorGUILayout.LabelField("Command id: " + myScript.currentCommandIndex);
             EditorGUILayout.Separator();
             EditorGUILayout.LabelField("JSON");
             json = EditorGUILayout.TextArea(json, GUILayout.Height(24), GUILayout.Width(300));

@@ -11,7 +11,9 @@ public class CameraMaster : MonoBehaviour {
     // tint
     // some weather
 
-    public void ReParent(Transform target) {
+    public void ReParent(Transform target)
+    {
+        this.target = target;
         float z = transform.position.z;
         transform.SetParent(target, true);
         Vector3 pos = Vector3.zero;
@@ -19,6 +21,11 @@ public class CameraMaster : MonoBehaviour {
         transform.localPosition = pos;
     }
 
+    /// <summary>
+    /// Returns transform's (X,Y) relative to screen center.
+    /// </summary>
+    /// <param name="t"></param>
+    /// <returns></returns>
     public Vector2 ScreenLocationVector(Transform t) {
         Vector3 pos = Camera.main.WorldToScreenPoint(t.position);
         Vector2 vec = Vector2.zero;

@@ -1,13 +1,14 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using SimpleJSON;
+using UnityEditor.Animations;
 
 // TODO
 // System.Action callback=null
 
 namespace BKB_RPG {
     [RequireComponent(typeof(Entity))]
-	[RequireComponent(typeof(CircleCollider2D))]
+	[RequireComponent(typeof(Collider2D))]
     [RequireComponent(typeof(Rigidbody2D))]
     [System.Serializable]
 	public class Mover : MonoBehaviour, IPauseable, ISavable, ITick {
@@ -21,8 +22,6 @@ namespace BKB_RPG {
 
         // Is this Entity moving
         public bool moving;
-        // Angle of attempted movement
-        public float movementAngle;
         // Angle Sprite is facing (locked to facing options setting)
         public float facing;
 
@@ -33,7 +32,7 @@ namespace BKB_RPG {
         // Pretty Selector for speed to 'move' at 
 		public Speed move_speed = Speed.Normal;
         // Real movment speed (units/tick)
-		public float speed { get {return (int)move_speed/1000f;} }
+		public float speed { get {return (int)move_speed/10;} }
         // Pretty selector for Animation speed multiplier
         public aSpeed animation_speed = aSpeed.Normal;
         public float animation_rate { get { return (int)animation_speed / 20f; } }
@@ -48,7 +47,8 @@ namespace BKB_RPG {
         // Entity is paused
         bool pause = false;
         // Stored speed modifier - used for moving on slopes
-        public float speedModifier = 1;
+        public Vector2 forces = Vector2.zero;
+        public Vector2 constantForces = Vector2.zero;
         //
         public int collisionLayerMask = Physics2D.DefaultRaycastLayers;
         // Sync command - do not advance until message from elsewhere
@@ -59,7 +59,7 @@ namespace BKB_RPG {
         public bool clipEnties = false;
         public bool clipAll = false;
 
-        
+        public string moverName;
 
         #region Movement Options
         // % spread of raycasts. 1 = flush with collider radius.
@@ -72,23 +72,18 @@ namespace BKB_RPG {
         // Number of rays to cast for collisions. Starts with '1' in the center, then adds more to each side.
         // More rays yields more percise checking and is a must for larger colliders
         public int ray_density = 2;
-        // When encountering an obstacle, should this mover attempt to 'slide' and keep moving?
-        public bool slide = false;
+
         // Looping through commands ++ or --?
         public bool reverse = false;
         // When true, current move command will exit upon reaching an impossible to move scenario. 
-        public bool ignore_impossible = false;
+        public bool ignore_impossible = true;
         // Do 'Slope' areas affect this mover?
-        public bool affectedBySlope = false;
+        public bool affectedBySlope = true;
         #endregion
 
         #region Inspector Drawer Options
         public Vector3 startPosition = Vector3.zero;
-        public Vector2 scrollPos;
-        public bool showSettings;
-        public bool showOptions;
-        public bool showQuickCommands = false;
-        public bool advanceDebugDraw = true;
+        
         #endregion
 
         #region mover helpers
@@ -104,32 +99,41 @@ namespace BKB_RPG {
         // Used to save last location of mover
         public Vector3 savePosition;
         // Keys to dis-include from JSON
-        readonly string[] dropKeys = { "spread", "stop_range", "radius", "ray_density", "slide",
-                "reverse", "ignore_impossible", "startPosition", "scrollPos", "showSettings",
-                "showOptions", "showQuickCommands", "advanceDebugDraw" };
+        readonly string[] dropKeys = { "spread", "stop_range", "radius", "ray_density",
+                "reverse", "ignore_impossible", "startPosition" };
         #endregion
 
         #region References for speedy lookups
         // If not set in inspector, object will assign to animator on itself
-        public Animator anim;
+
+        Animator _anim;
         Entity entity;
-        bool setup = false;
+        private Rigidbody2D rigidBody;
         Renderer render;
         #endregion
-
+        Callback _callback;
 
         #region Interfaces
         public void iPause() {
             pause = true;
             SetAnimation("speed", 0);
+            Stop();
+            rigidBody.velocity = Vector2.zero;
         }
 
         public void iResume() {
             pause = false;
             SetAnimation("speed", animation_rate);
+            rigidBody.velocity = constantForces;
         }
 
-        public string iSave() {
+        public string iSave()
+        {
+            return Save();
+        }
+
+        public string Save(params string[] keys)
+        {
             savePosition = transform.position;
             string json = JsonUtility.ToJson(this);
             JSONNode N = JSON.Parse(json);
@@ -137,18 +141,31 @@ namespace BKB_RPG {
             {
                 N.Remove(str);
             }
+            foreach (string str in keys)
+            {
+                N.Remove(str);
+            }
+            savePosition = default(Vector3);
             return N.ToString();
         }
 
         public void iLoad(string json) {
             JsonUtility.FromJsonOverwrite(json, this);
-            transform.position = savePosition;
+            if (savePosition != default(Vector3))
+                transform.position = savePosition;
         }
         #endregion
 
         void OnComplete() {
             compelete = true;
+            if (_callback != null)
+                _callback();
             // TODO - Call some complete delegates?
+        }
+
+        public void SetCallback(Callback callback)
+        {
+            _callback = callback;
         }
 
         void OnCycleComplete() {
@@ -156,42 +173,43 @@ namespace BKB_RPG {
         }
 
 		public void iSetup(object entity) {
-            // TODO
-            // Cache and define sprite per mover
-            if (setup)
-                return;
             this.entity = entity as Entity;
+		    _anim = this.entity._animator;
+            SetAnimation("8-dir", ((int)directions >= 8));
+            if (alwaysAnimate)
+                SetAnimation("speed", animation_rate);
+            else
+                SetAnimation("speed", 0);
+            currentCommandIndex = -1;
+            NextNode();
+            // break if already setup
+            if (rigidBody != null)
+                return;
+            // TODO - move this up? changes use case
             startPosition = transform.position;
-
             // Resolve 'magic strings'
             foreach (MovementCommand command in commands)
             {
                 if (command.targetName.ToUpper() == "PLAYER")
                     command.transformTarget = GameMaster.GetPlayerTransform();
             }
-
-			if (radius == 0)
-				radius = GetComponent<CircleCollider2D>().radius;
-            if (anim == null)
-    			anim = GetComponent<Animator>();
+		    if (radius == 0)
+		    {
+                BoxCollider2D box = GetComponent<BoxCollider2D>();
+                if (GetComponent<CircleCollider2D>() != null)
+                    radius = GetComponent<CircleCollider2D>().radius;
+                else
+    		        radius = box != null ? Mathf.Max(box.size.x, box.size.y) / 2 : 0.5f;
+            }
             render = GetComponent<Renderer>();
+		    rigidBody = GetComponent<Rigidbody2D>();
+		    rigidBody.isKinematic = false;
+		    rigidBody.freezeRotation = true;
             // pixelLock may impose a larger step than move speed.
             PixelLock pixel = GetComponent<PixelLock>();
-            if (pixel != null)
-                nearestPixel = pixel.resolution;
-
-            SetAnimation("8-dir", ((int)directions >= 8));
-            if (alwaysAnimate)
-                SetAnimation("speed", animation_rate);
-            else
-                SetAnimation("speed", 0);
-            SetFacing(facing);
-            currentCommandIndex = -1;
-            NextNode();
-            setup = true;
+		    nearestPixel = pixel != null ? pixel.resolution : 0.03f;
         }
 
-        // TODO - Refacter into less
         void NextNode() {
             waitTime = 0;
             targetSet = false;
@@ -208,7 +226,6 @@ namespace BKB_RPG {
 					currentCommandIndex = 0;
 					break;
 				case RepeatBehavior.ResetAndLoop:
-                    Debug.Log("reset");
 					transform.position = startPosition;
 					currentCommandIndex = 0;
 					break;
@@ -240,7 +257,6 @@ namespace BKB_RPG {
 		}
 
         public void SetFacing(float value) {
-            movementAngle = value;
             if (lockFacing)
                 return;
             facing = Utils.ClampAngle(value, (int)directions);
@@ -250,20 +266,71 @@ namespace BKB_RPG {
         }
 
         public void SetAnimation(string name, float value) {
-			if (anim == null)
+			if (_anim == null)
 				return;
-			anim.SetFloat(name, value);
+			_anim.SetFloat(name, value);
 		}
 
         void SetAnimation(string name, bool value) {
-            if (anim == null)
+            if (_anim == null)
                 return;
-            anim.SetBool(name, value);
+            _anim.SetBool(name, value);
         }
 
+        void _MoveCommands() {
+            moving = false;
+            if (!alwaysAnimate)
+                SetAnimation("speed", 0);
+            MovementCommand command = commands[currentCommandIndex];
+            if (!targetSet)
+            {
+                try
+                {
+                    target = _GetTarget(command);
+                    targetSet = true;
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogException(e, this);
+                    return;
+                }
+                // if facing command, modify target
+                if (command.commandType == MovementCommand.CommandTypes.Face)
+                {
+                    float random = Utils.AngleBetween(transform.position, target);
+                    // Apply randoms
+                    if (command.randomType == MovementCommand.RandomTypes.Linear)
+                        random += Random.Range(command.random.x, command.random.y);
+                    else if (command.randomType == MovementCommand.RandomTypes.Area)
+                    {
+                        Vector2 selectedRange = Random.value >= 0.5f ? command.random : command.random2;
+                        random += Random.Range(selectedRange.x, selectedRange.y);
+                    }
+                    else
+                        random += command.offsetAngle;
+                    random = Utils.ClampAngle(random, (int)directions);
+                    SetFacing(random);
+                    NextNode();
+                    return;
+                }
+            }
+            else if (command.recalculate && (command.move_type == MovementCommand.MoverTypes.To_transform || command.move_type == MovementCommand.MoverTypes.ObjName))
+                target = (Vector3)command.transformTarget.position;
+            if ((transform.position-target).magnitude > 0.1f)
+                SetFacing(Utils.AngleBetween(transform.position, target));
+            if (command.instant)
+                transform.position = target;
+            int result = StepTowards(target, Mathf.Max(nearestPixel, command.withinDistance, speed * 0.02f));
+            if (result == 1 || (result == 2 && ignore_impossible)) {
+                Stop();
+                NextNode();
+                return;
+            }
+            SetAnimation("speed", animation_rate);
+            moving = true;
+        }
 
         Vector3 _GetTarget(MovementCommand command) {
-            speedModifier = 1;
             Vector3 result = command.target;
             switch (command.move_type)
             {
@@ -304,66 +371,12 @@ namespace BKB_RPG {
             if (command.maxStep > 0 && command.move_type != MovementCommand.MoverTypes.Angle)
             {
                 Vector2 dir = (Vector2)result - (Vector2)transform.position;
-                dir = dir.normalized * command.maxStep;
+                if (dir.magnitude > command.maxStep)
+                    dir = dir.normalized * command.maxStep;
                 result = transform.position + (Vector3)dir;
             }
             result.z = transform.position.z;
             return result;
-        }
-
-
-        void _MoveCommands() {
-            moving = false;
-            if (!alwaysAnimate)
-                SetAnimation("speed", 0);
-            MovementCommand command = commands[currentCommandIndex];
-            if (!targetSet)
-            {
-                try
-                {
-                    target = _GetTarget(command);
-                    targetSet = true;
-                }
-                catch (System.Exception e)
-                {
-                    Debug.LogException(e, this);
-                    return;
-                }
-                // if facing command, modify target
-                if (command.commandType == MovementCommand.CommandTypes.Face)
-                {
-                    float random = Utils.AngleBetween(transform.position, target);
-                    // Apply randoms
-                    if (command.randomType == MovementCommand.RandomTypes.Linear)
-                        random += Random.Range(command.random.x, command.random.y);
-                    else if (command.randomType == MovementCommand.RandomTypes.Area)
-                    {
-                        if (Random.value >= 0.5f)
-                            random += Random.Range(command.random.x, command.random.y);
-                        else
-                            random += Random.Range(command.random2.x, command.random2.y);
-                    }
-                    else
-                        random += command.offsetAngle;
-                    random = Utils.ClampAngle(random, (int)directions);
-                    SetFacing(random);
-                    NextNode();
-                    return;
-                }
-            }
-            else if (command.recalculate && (command.move_type == MovementCommand.MoverTypes.To_transform || command.move_type == MovementCommand.MoverTypes.ObjName))
-                target = (Vector3)command.transformTarget.position;
-            if ((transform.position-target).magnitude > 0.1f)
-                SetFacing(Utils.AngleBetween(transform.position, target));
-            if (command.instant)
-                transform.position = target;
-            int result = StepTowards(target, command.withinDistance);
-            if (result == 1 || (result == 2 && ignore_impossible)) {
-                NextNode();
-                return;
-            } // else if (result == 2 && giveup)
-            SetAnimation("speed", animation_rate);
-            moving = true;
         }
 
         void _BoolCommands() {
@@ -383,10 +396,7 @@ namespace BKB_RPG {
                 break;
             case MovementCommand.FlagType.AlwaysAnimate:
                 alwaysAnimate = command.Bool;
-                if (alwaysAnimate)
-                    SetAnimation("speed", animation_rate);
-                else
-                    SetAnimation("speed", 0);
+                SetAnimation("speed", alwaysAnimate ? animation_rate : 0);
                 break;
             case MovementCommand.FlagType.Invisible:
                 if (render != null)
@@ -398,16 +408,13 @@ namespace BKB_RPG {
             case MovementCommand.FlagType.Reverse:
                 reverse = command.Bool;
                 break;
-            // TODO - call IPauseable... also, this command is destructive... (no way for self to recover)
-            case MovementCommand.FlagType.Pause:
-                compelete = command.Bool;
-                break;
             }
         }
 
 
-        public void iTick() {
-			if (compelete || pause|| commands.Count == 0)
+        public void iTick()
+        {
+            if (compelete || pause|| commands.Count == 0)
 				return;
 
             MovementCommand command = commands[currentCommandIndex];
@@ -494,48 +501,70 @@ namespace BKB_RPG {
             }
         }
 
-
-        public int StepTowards(Vector3 target, float stopWithin = 0f, bool trySlide=true, float speedModifier=1) {
-            Vector2 dir = target - transform.position;
-
-            if (speedModifier == 1)
-                speedModifier = speed * this.speedModifier;
-            float mySpeed = speedModifier;
-            // within destination?
-            if (dir.magnitude <= Mathf.Max(mySpeed, nearestPixel, stopWithin))
-            {
-                if (stopWithin == 0) {
-                    target.z = transform.position.z;
-                    transform.position = target;
-                }
-				return (int)results.Complete;
-			}
-            // ray cast
+        public int StepTowards(Vector3 targetLocation, float within = 0)
+        {
+            Vector2 dir = targetLocation - transform.position;
+            if (dir.magnitude <= within)
+                return (int) results.Complete;
             dir = dir.normalized;
-            // Begin the raycast near the back edge of the collider
-            Vector3 offset = (Vector3)dir * radius * 0.5f;
-            RaycastHit2D hit = Utils.Raycast((transform.position - offset), dir, ray_density,
-			                                 radius*spread, lookAhead:(radius + mySpeed * stop_range + offset.magnitude),
-                                             self:this.transform, layers:collisionLayerMask);
-			if (hit && !hit.collider.isTrigger) {
-                // DEBUG only
-                #if UNITY_EDITOR
-                if (hit.transform == this.transform)
-					Debug.LogWarning(this.name + " colliding with self.");
-                #endif
-                if (slide && trySlide) {
-					Vector3 t = Vector3.Cross(dir, hit.normal);
-					t = Vector3.Cross(hit.normal, t);
-					t.z = 0;
-					return StepTowards (transform.position + (Vector3)t.normalized, stopWithin, false, speedModifier);
-				}
+            return Step(dir) ? (int) results.Nil : (int)results.Hit;
+        }
+
+        public void Stop()
+        {
+            SetAnimation("speed", 0);
+            moving = false;
+            if (rigidBody == null)
+                return;
+            rigidBody.velocity = constantForces;
+        }
+
+        public bool Step(Vector3 dir)
+        {
+            if (pause)
+                return false;
+            RaycastHit2D hit = Utils.Raycast((transform.position), dir, radius, ray_density, self: transform, layers: 1);
+            SetFacing(Utils.Vector2toAngle(dir));
+            if (hit && !hit.collider.isTrigger)
+            {
                 entity.OnCollision(hit.transform);
-				return (int)results.Hit;
-			}
-			// move some
-			transform.position += (Vector3)dir * mySpeed;
-			return (int)results.Nil;
-		}
-    //end class
-	}
+                Stop();
+                return false;
+            }
+            SetAnimation("speed", animation_rate);
+            moving = true;
+            rigidBody.velocity = dir * speed;
+            if (forces != Vector2.zero)
+            {
+                float angle = Mathf.RoundToInt(Vector2.Angle(rigidBody.velocity, forces));
+                angle = (angle - 90) / -90f;
+                Vector2 result = forces * Mathf.Abs(angle);
+                // If walking against forces
+                if (angle < 0)
+                {
+                    // No bouncing against slopes
+                    if (result.magnitude >= rigidBody.velocity.magnitude)
+                    {
+                        rigidBody.velocity = Vector2.zero;
+                        result = Vector2.zero;
+                    }
+                    rigidBody.velocity += result;
+                }
+                else
+                {
+                    // Limit max speed increase to 2X event speed
+                    if (result.magnitude * 2f >= rigidBody.velocity.magnitude)
+                    {
+                        result = rigidBody.velocity * 2;
+                    }
+                    rigidBody.velocity += result;
+                }
+            }
+            rigidBody.velocity += constantForces;
+            // TODO - Call to OnStep functionality? (show foot steps in snow, drit kickup, etc.)
+            return true;
+        }
+
+        //end class
+        }
 }

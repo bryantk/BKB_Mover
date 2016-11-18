@@ -12,7 +12,7 @@ namespace BKB_RPG {
         public bool expandedInspector;
 
         // BOOL
-        public enum FlagType { LockFacing, AlwaysAnimate, Clip, ClipAll, Invisible, IgnoreImpossible, Reverse, Pause };
+        public enum FlagType { LockFacing, AlwaysAnimate, Clip, ClipAll, Invisible, IgnoreImpossible, Reverse };
         // What kind of bool 
         public FlagType flag;
         public bool Bool;   // and Remove
