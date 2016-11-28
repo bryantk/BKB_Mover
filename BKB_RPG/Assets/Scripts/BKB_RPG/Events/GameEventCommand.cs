@@ -304,7 +304,9 @@ namespace BKB_RPG {
                 yield return null;
         }
 
-        IEnumerator RunEntityEventCommand() {
+        IEnumerator RunEntityEventCommand()
+        {
+            entity = entity != null ? entity : gEvent.parent;
             var targetPage = entity.eventPages[entity.activePage];
             switch (executionType)
             {
@@ -327,10 +329,14 @@ namespace BKB_RPG {
                 entity.iDestroy();
                 break;
             case 2:     // Set Move Route
+                if (entity == gEvent.parent)
+                {
+                    entity.CachedFacing = -1;
+                }
                 var targetMover = targetPage.mover == null ? entity.gameObject.AddComponent<Mover>() : targetPage.mover;
                 targetMover.iLoad(string_1);
                 if (!Block)
-                    yield return null;
+                    yield break;
                 targetMover.SetCallback(CallbackComplete);
                 _awaitingCallback = true;
                 while (_awaitingCallback)
@@ -338,6 +344,12 @@ namespace BKB_RPG {
                 break;
             case 3:     // change sprite
                 entity.SetupImage(animationOverride, sprite);
+                break;
+            case 4: // Disable
+                entity.SetActive(false);
+                break;
+            case 5:  // Activate
+                entity.SetActive(true);
                 break;
             }
             yield return null;
@@ -373,7 +385,6 @@ namespace BKB_RPG {
 
         IEnumerator RunMessage() {
             VoxBox.QueueMessage(voxData);
-            bool wait = true;
             VoxBox.PlayMessages(CallbackComplete);
             _awaitingCallback = true;
             while (_awaitingCallback)

@@ -23,7 +23,7 @@ public class LevelMaster : MonoBehaviour {
             return;
 #endif
         EntityMaster em = GameMaster._instance.entityMaster;
-        em.entities = new List<Entity>(GetComponentsInChildren<Entity>());
+        em.entities = new HashSet<Entity>(GetComponentsInChildren<Entity>());
         em.iSetup(null);
 
     }

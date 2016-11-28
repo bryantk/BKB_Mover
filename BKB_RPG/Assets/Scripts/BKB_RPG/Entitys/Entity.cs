@@ -34,6 +34,8 @@ namespace BKB_RPG {
 
         }
 
+        public float CachedFacing;
+
 
         private const float RATE = 0.25f;
 
@@ -142,7 +144,20 @@ namespace BKB_RPG {
 
         public void iDestroy()
         {
-            EntityMaster.DestoryEntity(this);
+            EntityMaster.DisableEntity(this, true);
+        }
+
+        public void SetActive(bool active)
+        {
+            if (active)
+            {
+                EntityMaster.AddEntity(this);
+            }
+            else
+            {
+                EntityMaster.DisableEntity(this);
+            }
+            gameObject.SetActive(active);
         }
 
         #region Pause + Resume
@@ -243,10 +258,14 @@ namespace BKB_RPG {
             }
         }
 
-        protected void RunEvent() {
+        protected void RunEvent(Callback onComplete = null) {
             if (activePage < eventPages.Count && eventPages[activePage].gameEvent != null)
-                eventPages[activePage].gameEvent.Run();
+                eventPages[activePage].gameEvent.RunWithCallback(onComplete);
         }
+
+
+
+        // Reactive Event Triggering
 
         public virtual void OnCollision(Transform hit) {
             if (_paused)
@@ -277,43 +296,50 @@ namespace BKB_RPG {
             print("Player hit me, " + this.name);
         }
 
-        public void OnInputActivated() {
+        public void OnInputActivated(Entity activator) {
             if (_paused)
                 return;
             if (!(eventPages[activePage].trigger == TriggerBehaviour.OnButtonPress || eventPages[activePage].trigger == TriggerBehaviour.Each))
                 return;
-            RunEvent();
+            Mover m = MyMover;
+            CachedFacing = m != null ? m.facing : -1;
+            if (m)
+            {
+                Vector2 dir = activator.gameObject.transform.position - gameObject.transform.position;
+                m.SetFacing(Utils.Vector2toAngle(dir));
+            }
+            RunEvent(ResetFacing);
             print("Player activated me, " + this.name);
         }
 
-        // TODO - add page index
-        // TODO - Determine need and functionality
-        public void SetTriggerbehaviour(string type="NONE") {
-            switch (type.ToUpper())
+        private void ResetFacing()
+        {
+            Mover m = MyMover;
+            if (CachedFacing < 0 || m == null)
+                return;
+            m.SetFacing(CachedFacing);
+        }
+
+        private Mover MyMover
+        {
+            get
             {
-            default:
-            case "NONE":
-                eventPages[activePage].trigger = TriggerBehaviour.None;
-                break;
-            case "EVENTTOUCH":
-                eventPages[activePage].trigger = TriggerBehaviour.EventTouch;
-                break;
-            case "PLAYERTOUCH":
-                eventPages[activePage].trigger = TriggerBehaviour.PlayerTouch;
-                break;
-            case "ALWAYS":
-                eventPages[activePage].trigger = TriggerBehaviour.Always;
-                break;
-            case "ONBUTTONPRESS":
-                eventPages[activePage].trigger = TriggerBehaviour.OnButtonPress;
-                break;
-            case "ONCE":
-                eventPages[activePage].trigger = TriggerBehaviour.Once;
-                break;
-            case "EACH":
-                eventPages[activePage].trigger = TriggerBehaviour.Each;
-                break;
+                if (HasActivePage && eventPages[activePage].mover != null)
+                    return eventPages[activePage].mover;
+                return null;
             }
         }
+
+        private GameEvent MyEvent
+        {
+            get
+            {
+                if (HasActivePage && eventPages[activePage].gameEvent != null)
+                    return eventPages[activePage].gameEvent;
+                return null;
+            }
+        }
+
+
     }
 }

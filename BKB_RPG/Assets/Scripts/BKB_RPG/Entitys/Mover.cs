@@ -513,6 +513,12 @@ namespace BKB_RPG {
         public void Stop()
         {
             SetAnimation("speed", 0);
+            if (_anim != null)
+            {
+                // Set frame to 0 of animation
+                var current = _anim.GetCurrentAnimatorStateInfo(0);
+                _anim.Play(current.tagHash, -1, 0f);
+            }
             moving = false;
             if (rigidBody == null)
                 return;

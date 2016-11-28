@@ -91,7 +91,7 @@ namespace BKB_RPG {
                 Entity other = hit.transform.GetComponent<Entity>();
                 if (other != null)
                 {
-                    other.OnInputActivated();
+                    other.OnInputActivated(this);
                 }
             }
         }

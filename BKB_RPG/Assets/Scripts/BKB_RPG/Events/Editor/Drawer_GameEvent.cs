@@ -98,6 +98,7 @@ public class Drawer_GameEvent : Editor {
                 command.expanded = EditorGUI.Foldout(new Rect(rect.x + 115, rect.y, 20, 20), command.expanded, "");
             // Command Type Enum
             GameEventCommand.CommandTypes previousType = command.CommandID;
+            // TODO - Use a string rather than enum to provide for '/' organized drop-downs?
             EditorGUI.PropertyField(new Rect(rect.x+30, rect.y, 70, EditorGUIUtility.singleLineHeight),
                                     element.FindPropertyRelative("CommandID"), GUIContent.none);
             serializedObject.ApplyModifiedProperties();
@@ -442,7 +443,7 @@ public class Drawer_GameEvent : Editor {
             rect2 = rect;
             rect2.width = tabedWidth - 120;
             command.executionType = EditorGUI.IntPopup(rect2, command.executionType,
-                new string[] { "Set Execution", "Erase", "Move Command", "Sprite or Anim" }, new int[] { 0, 1, 2, 3 });
+                new string[] { "Set Execution", "Alive/Erase", "Move Command", "Sprite or Anim", "Alive/Disable", "Alive/Enable" }, new int[] { 0, 1, 2, 3, 4, 5 });
             if (!command.expanded)
                 return;
             rect.x -= 120;

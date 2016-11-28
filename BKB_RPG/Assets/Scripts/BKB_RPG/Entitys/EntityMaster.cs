@@ -9,7 +9,7 @@ namespace BKB_RPG {
 
 
         public Player playerEntity;
-        public List<Entity> entities = new List<Entity>();
+        public HashSet<Entity> entities = new HashSet<Entity>();
 
         private static EntityMaster _instance;
 
@@ -49,11 +49,17 @@ namespace BKB_RPG {
             }
         }
 
-        public static void DestoryEntity(Entity entity)
+        public static void DisableEntity(Entity entity, bool destroy = false)
         {
             HaltCoroutine(entity);
             _instance.entities.Remove(entity);
+            // TODO - if entity has uGUID, save uGUID. To deleted or disabled based on 'destroy' flag
             Destroy(entity.gameObject);
+        }
+
+        public static bool AddEntity(Entity entity)
+        {
+            return _instance.entities.Add(entity);
         }
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -145,8 +151,10 @@ namespace BKB_RPG {
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         #region Pause + Resume
         public void PauseAll() {
-            PauseNPC();
-            PauseEnemies();
+            foreach (Entity entity in entities)
+            {
+                entity.iPause();
+            }
             PausePlayer();
         }
 
@@ -172,8 +180,10 @@ namespace BKB_RPG {
 
 
         public void ResumeAll() {
-            ResumeNPC();
-            ResumeEnemies();
+            foreach (Entity entity in entities)
+            {
+                    entity.iResume();
+            }
             ResumePlayer();
         }
 

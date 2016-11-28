@@ -100,7 +100,6 @@ namespace BKB_RPG {
                         yield break;
                     break;
                 case GameEventCommand.CommandTypes.EntityEvent:
-                    //EntityEventCommand(command, i);
                     if (command.entity == null)
                         Debug.LogWarning(string.Format("No entity target set for command {0} of '{1}'. Target set to self as default. Is this intended?", i, name));
                     yield return command.Run(this);
@@ -120,42 +119,6 @@ namespace BKB_RPG {
             if (string.IsNullOrEmpty(condition))
                 return defaultReturn;
             return GameMaster._instance.stringParser.EvaluateBool(condition);
-        }
-
-        private void EntityEventCommand(GameEventCommand command, int index) {
-            if (command.entity == null)
-                Debug.LogWarning(string.Format("No entity target set for command {0} of '{1}'. Target set to self as default. Is this intended?", index, name));
-            Entity target = command.entity != null ? command.entity : parent;
-            var targetPage = target.eventPages[target.activePage];
-            switch (command.executionType)
-            {
-            case 0:     // Change execution type
-                var behaviour = (Entity.TriggerBehaviour)command.int_2;
-                if (command.int_1 == -2)
-                {
-                    foreach (var ep in target.eventPages)
-                    {
-                        ep.trigger = behaviour;
-                    }
-                    return;
-                }
-                int eventPage = command.int_1;
-                if (command.int_1 == -1)
-                    eventPage = target.activePage;
-                target.eventPages[eventPage].trigger = behaviour;
-                break;
-            case 1:     // Erase
-                target.iDestroy();
-                break;
-            case 2:     // Set Move Route
-                
-                var targetMover = targetPage.mover == null ? target.gameObject.AddComponent<Mover>() : targetPage.mover;
-                targetMover.iLoad(command.string_1);
-                break;
-            case 3:     // change sprite
-                target.SetupImage(command.animationOverride, command.sprite);
-                break;
-            }
         }
 
         private void Skip_If(ref int i) {
